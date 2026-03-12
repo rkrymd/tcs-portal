@@ -1,34 +1,2678 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="TCS Portal">
-  <meta name="theme-color" content="#f7f6f3">
-  <title>TCS Creator Portal</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TCS Portal">
+<meta name="theme-color" content="#111018">
+<title>TCS Creator Portal</title>
+<script>
+// PWAマニフェストをインラインで生成（GASは別ファイル配信不可のため）
+(function() {
+  var manifest = {
+    name: "TCS Creator Portal",
+    short_name: "TCS Portal",
+    start_url: "https://rkrymd.github.io/tcs-portal/",
+    display: "standalone",
+    background_color: "#111018",
+    theme_color: "#111018",
+    icons: [{ src: "https://via.placeholder.com/192/111018/ffffff?text=T", sizes: "192x192", type: "image/png" }]
+  };
+  var blob = new Blob([JSON.stringify(manifest)], {type: 'application/manifest+json'});
+  var url  = URL.createObjectURL(blob);
+  var link = document.createElement('link');
+  link.rel = 'manifest'; link.href = url;
+  document.head.appendChild(link);
+})();
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#f7f6f3;--s:#fff;--bd:#e8e6e0;--tx:#111018;--t2:#5a5870;--t3:#a09eb8;
+  --ok:#00a86b;--okl:#d4f5e8;--warn:#e07b00;--warnl:#fff0d4;--red:#e03535;--redl:#ffe5e5;
+  --line:#06C755;--linel:#e8faf0;
+  --sh:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --sh-md:0 6px 20px rgba(0,0,0,.08);
+  --f:'Noto Sans JP',sans-serif;
+  --fh:'Plus Jakarta Sans','Noto Sans JP',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+html,body{height:100%;background:var(--bg);font-family:var(--f);color:var(--tx);-webkit-font-smoothing:antialiased;overflow:hidden}
+#app{height:100%;display:flex;flex-direction:column;max-width:430px;margin:0 auto;background:var(--bg)}
+a{color:inherit;text-decoration:none}
+button,input{font-family:var(--f);border:none;outline:none}
+button{cursor:pointer;background:none}
+img{display:block}
+
+/* ── Screen system ── */
+.screen{display:none;height:100%;flex-direction:column}
+.screen.active{display:flex}
+
+/* ── Loading ── */
+#loadingScreen{align-items:center;justify-content:center;flex-direction:column;background:var(--bg);padding:48px 40px 60px}
+.loader{width:36px;height:36px;border:3px solid var(--bd);border-top-color:var(--ok);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:24px;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-title{font-size:20px;font-weight:800;color:var(--tx);letter-spacing:-.4px;margin-bottom:8px;text-align:center}
+.load-sub{font-size:12px;color:var(--t3);margin-bottom:32px;text-align:center;line-height:1.8}
+.ptrack{width:100%;max-width:240px;height:5px;background:var(--bd);border-radius:3px;overflow:hidden;margin-bottom:10px}
+@keyframes pfill{0%{width:0%}40%{width:55%}70%{width:78%}88%{width:90%}95%{width:96%}100%{width:100%}}
+.pfill{height:100%;width:0;border-radius:3px;background:linear-gradient(90deg,var(--ok),#00e07a);box-shadow:0 0 8px rgba(0,168,107,.3)}
+.pfill.go{animation:pfill 4.5s cubic-bezier(.4,0,.6,1) forwards}
+.load-foot{width:100%;max-width:240px;display:flex;align-items:center;justify-content:space-between}
+.load-brand{font-size:11px;color:var(--t3);font-weight:600;letter-spacing:.3px}
+.load-pct{font-size:14px;font-weight:800;color:var(--t2);min-width:40px;text-align:right}
+
+/* ── Login screen ── */
+#loginScreen{background:var(--bg)}
+.login-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 28px}
+.brand-logo{width:68px;height:68px;border-radius:18px;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 4px 20px rgba(0,0,0,.12);overflow:hidden;border:1px solid var(--bd)}
+.login-brand{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--t3);letter-spacing:1.2px;margin-bottom:22px;text-align:center;text-transform:uppercase}
+.login-title{font-family:var(--fh);font-size:26px;font-weight:800;letter-spacing:-1px;line-height:1.2;margin-bottom:14px;text-align:center}
+.login-title-main{display:block}
+.login-title-accent{display:inline-block;background:linear-gradient(135deg,#111 0%,#444 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;position:relative}
+.login-title-accent::after{content:'';position:absolute;left:0;bottom:-2px;width:100%;height:3px;background:linear-gradient(90deg,#06C755,#111);border-radius:2px}
+.login-sub-tag{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;background:var(--tx);color:#fff;font-size:10px;font-weight:700;letter-spacing:.5px;font-family:var(--mono);margin-bottom:14px}
+.login-desc{font-size:13px;color:var(--t2);line-height:1.8;text-align:center;margin-bottom:32px}
+.line-btn{width:100%;padding:15px 20px;border-radius:14px;background:var(--line);color:#fff;font-size:15px;font-weight:700;font-family:var(--fh);display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 6px 20px rgba(6,199,85,.3);transition:opacity .15s;margin-bottom:12px}
+.line-btn:hover{opacity:.9}
+.login-note{font-size:11px;color:var(--t3);text-align:center;line-height:1.7;font-family:var(--mono)}
+.login-features{display:flex;gap:8px;justify-content:center;margin-top:24px;width:100%}
+.feat-pill{display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 10px;border-radius:14px;background:var(--s);border:1px solid var(--bd);font-size:10px;color:var(--t2);font-weight:600;box-shadow:var(--sh);min-width:68px;flex:1}
+
+/* ── Register screen ── */
+#registerScreen{background:var(--bg)}
+.reg-wrap{flex:1;overflow-y:auto;padding:28px 24px 40px}
+.back-btn{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t3);font-family:var(--mono);margin-bottom:24px}
+.form-title{font-family:var(--fh);font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:6px}
+.form-desc{font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:26px}
+.field-label{font-size:10px;font-weight:700;color:var(--t2);display:block;margin-bottom:6px;letter-spacing:.5px;font-family:var(--mono)}
+.field-input{width:100%;padding:12px 14px;background:var(--s);border:1.5px solid var(--bd);border-radius:12px;font-size:14px;color:var(--tx);font-family:var(--mono);transition:border-color .15s;margin-bottom:16px}
+.field-input:focus{border-color:var(--tx)}
+.field-hint{font-size:11px;color:var(--t3);font-family:var(--mono);margin-top:-10px;margin-bottom:16px}
+.submit-btn{width:100%;padding:14px;border-radius:12px;background:var(--tx);color:#fff;font-size:14px;font-weight:700;font-family:var(--fh);letter-spacing:-.2px;transition:opacity .15s}
+.submit-btn:disabled{opacity:.45}
+.genre-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.genre-btn{padding:7px 13px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--bd);background:var(--s);color:var(--t2);transition:all .15s;cursor:pointer}
+.genre-btn.selected{background:var(--tx);color:#fff;border-color:var(--tx)}
+.style-btn{width:100%;padding:12px 14px;border-radius:14px;border:1.5px solid var(--bd);background:var(--s);text-align:left;font-size:13px;font-weight:700;color:var(--t2);cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:8px}
+.style-btn.selected{background:var(--tx);color:#fff;border-color:var(--tx)}
+.style-desc{font-size:11px;font-weight:400;color:var(--t3);margin-left:auto}
+.style-btn.selected .style-desc{color:rgba(255,255,255,.5)}
+.err-msg{background:var(--redl);border:1px solid #fecaca;border-radius:10px;padding:10px 14px;font-size:12px;color:var(--red);margin-bottom:14px;display:none}
+.err-msg.show{display:block}
+
+/* ── App header ── */
+.app-header{background:rgba(247,246,243,.92);border-bottom:1px solid var(--bd);backdrop-filter:blur(16px);padding:12px 18px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.app-header-dot{width:28px;height:28px;border-radius:8px;background:var(--tx);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;font-family:var(--fh)}
+.app-header-title{font-family:var(--fh);font-size:13px;font-weight:700;letter-spacing:-.2px;flex:1}
+.line-chip{display:flex;align-items:center;gap:5px;padding:4px 10px;background:var(--linel);border:1px solid rgba(6,199,85,.2);border-radius:20px}
+.line-chip-dot{width:6px;height:6px;border-radius:50%;background:var(--line)}
+.line-chip-txt{font-size:10px;font-weight:700;color:var(--ok);font-family:var(--mono)}
+
+/* ── App content ── */
+.app-content{flex:1;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.tab-page{display:none !important;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;transition:opacity .15s ease}
+.tab-page.active{display:block !important}
+#catalogTab.active{display:flex !important;flex-direction:column;overflow:hidden}
+
+/* ── Bottom nav ── */
+.bottom-nav{border-top:1px solid var(--bd);background:rgba(247,246,243,.96);display:flex;flex-shrink:0;padding-bottom:env(safe-area-inset-bottom)}
+.nav-btn{flex:1;padding:10px 4px 12px;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative}
+.nav-icon{font-size:20px;transition:filter .15s;filter:grayscale(1) opacity(.5)}
+.nav-btn.active .nav-icon{filter:none}
+.nav-icon-wrap{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.nav-btn.active .nav-icon-wrap{background:rgba(17,16,24,.08)}
+svg.nav-svg{width:21px;height:21px;fill:none;stroke:var(--t3);stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s}
+.nav-btn.active svg.nav-svg{stroke:var(--tx)}
+.nav-pip{width:16px;height:2.5px;border-radius:2px;background:var(--tx);opacity:0;transition:opacity .15s}
+.nav-btn.active .nav-pip{opacity:1}
+.nav-label{font-size:9px;font-weight:700;font-family:var(--mono);color:var(--t3);letter-spacing:.3px;transition:color .15s}
+.nav-btn.active .nav-label{color:var(--tx)}
+.nav-indicator{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:20px;height:2px;background:var(--tx);border-radius:1px;display:none}
+.nav-btn.active .nav-indicator{display:block}
+.nav-badge{position:absolute;top:6px;left:calc(50% + 4px);width:16px;height:16px;border-radius:8px;background:var(--red);color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center}
+
+/* ── Section label ── */
+.sec-label{font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.8px;font-family:var(--mono);text-transform:uppercase;margin-bottom:10px}
+
+/* ── Cards ── */
+.card{background:var(--s);border:1px solid var(--bd);border-radius:16px;box-shadow:var(--sh)}
+
+/* ── Buttons ── */
+.btn-primary{padding:12px;border-radius:12px;background:var(--tx);color:#fff;font-size:13px;font-weight:700;font-family:var(--fh);width:100%;letter-spacing:-.2px;transition:opacity .15s}
+.btn-primary:hover{opacity:.88}
+.btn-secondary{padding:11px;border-radius:11px;border:1px solid var(--bd);font-size:12px;color:var(--t2);background:transparent;width:100%;transition:background .15s}
+.btn-secondary:hover{background:var(--bg)}
+
+/* ── Status badges ── */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;font-family:var(--mono)}
+.card-badge-bar .badge{flex:1;justify-content:center;border-radius:0;padding:6px 4px;font-size:10px;letter-spacing:.1px}
+.badge-approved{background:var(--okl);color:var(--ok)}
+.badge-pending{background:var(--warnl);color:var(--warn)}
+.badge-rejected{background:var(--redl);color:var(--red)}
+.badge-instant{background:rgba(0,168,107,.14);color:var(--ok);border:1px solid rgba(0,168,107,.22)}
+.badge-approval{background:rgba(224,123,0,.14);color:var(--warn);border:1px solid rgba(224,123,0,.22)}
+
+/* ── HOME TAB ── */
+#homeTab{padding:20px 18px 28px}
+.greeting{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.greeting-name{font-family:var(--fh);font-size:22px;font-weight:800;letter-spacing:-.5px}
+.greeting-sub{font-size:12px;color:var(--t3);font-family:var(--mono);margin-bottom:4px}
+.avatar{border-radius:14px;overflow:hidden;background:linear-gradient(135deg,#e0d7ff,#d4f5e8);flex-shrink:0}
+.stats-row{display:flex;background:var(--s);border:1px solid var(--bd);border-radius:16px;overflow:hidden;margin-bottom:14px;box-shadow:var(--sh)}
+.stat-cell{flex:1;padding:14px 0;display:flex;flex-direction:column;align-items:center;gap:3px}
+.stat-val{font-family:var(--fh);font-size:19px;font-weight:800;line-height:1}
+.stat-label{font-size:9px;color:var(--t3);font-family:var(--mono);letter-spacing:.4px}
+.stat-divider{width:1px;background:var(--bd);margin:10px 0}
+.line-banner{background:linear-gradient(135deg,var(--linel),#fff);border:1px solid rgba(6,199,85,.2);border-radius:14px;padding:12px 15px;display:flex;align-items:center;gap:11px;margin-bottom:18px}
+.line-banner-icon{width:36px;height:36px;border-radius:10px;background:var(--line);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.line-banner-title{font-size:12px;font-weight:700;color:var(--ok);font-family:var(--fh)}
+.line-banner-desc{font-size:11px;color:var(--t2)}
+.invite-scroll-outer{position:relative;margin:0 -16px}
+.invite-scroll-outer::after{content:'';position:absolute;top:0;right:0;bottom:0;width:48px;background:linear-gradient(to left,var(--bg),transparent);pointer-events:none;z-index:1}
+.invite-scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;padding-left:16px}
+.invite-scroll-wrap::-webkit-scrollbar{display:none}
+.invite-scroll-inner{display:flex;gap:10px;width:max-content;padding-right:48px}
+.invite-hint-arrow{font-size:11px;color:rgba(124,58,237,.6);animation:hint-nudge 1.4s ease-in-out infinite;display:inline-block}
+@keyframes hint-nudge{0%,100%{transform:translateX(0)}50%{transform:translateX(4px)}}
+.notif-item{background:var(--s);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;gap:10px;align-items:flex-start;border:1px solid var(--bd)}
+.notif-item.unread{background:#fafaff;border-color:#e0deff}
+.notif-icon{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.notif-msg{font-size:12px;line-height:1.6;color:var(--tx);margin-bottom:3px}
+.notif-time{font-size:10px;color:var(--t3);font-family:var(--mono)}
+.notif-dot{width:7px;height:7px;border-radius:50%;background:#6366f1;flex-shrink:0;margin-top:4px}
+.cta-btn{width:100%;padding:14px;border-radius:14px;background:var(--tx);color:#fff;font-size:13px;font-weight:700;font-family:var(--fh);display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px}
+
+/* ── CATALOG TAB ── */
+.filter-bar{padding:0;border-bottom:1px solid var(--bd);flex-shrink:0}
+.filter-bar-toggle{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;cursor:pointer;user-select:none;gap:8px}
+.filter-bar-toggle-label{font-size:12px;font-weight:700;color:var(--t2);font-family:var(--fh);letter-spacing:-.2px;display:flex;align-items:center;gap:6px}
+.filter-bar-toggle-arrow{font-size:10px;color:var(--t3);transition:transform .2s}
+.filter-bar-toggle-arrow.open{transform:rotate(180deg)}
+.filter-bar-body{padding:0 16px 12px;overflow:hidden}
+.filter-bar-body
+.catalog-search-wrap{display:flex;align-items:center;gap:8px;background:var(--s);border:1.5px solid var(--bd);border-radius:14px;padding:0 12px;transition:border-color .15s}
+.catalog-search-wrap:focus-within{border-color:var(--tx)}
+.catalog-search-icon{font-size:13px;flex-shrink:0;opacity:.5}
+.catalog-search-input{flex:1;padding:11px 0;font-size:13px;background:none;border:none;outline:none;color:var(--tx);font-family:var(--f)}
+.catalog-search-input::placeholder{color:var(--t3)}
+.catalog-search-clear{background:var(--bg);border:1px solid var(--bd);border-radius:6px;width:22px;height:22px;font-size:12px;color:var(--t3);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
+.filter-tabs{display:flex;gap:3px;padding:3px;background:var(--s);border:1px solid var(--bd);border-radius:30px;box-shadow:var(--sh)}
+.filter-tab{flex:1;padding:6px 0;border-radius:24px;font-size:11px;font-weight:700;transition:all .15s;color:var(--t2);white-space:nowrap}
+.filter-tab.active{background:var(--tx);color:#fff}
+#ft-invite.active{background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff}
+.category-chips{display:flex;gap:6px;overflow-x:auto;padding:10px 0 2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.category-chips::-webkit-scrollbar{display:none}
+
+.hidden{display:none!important}.cat-chip{display:inline-flex;align-items:center;padding:6px 14px;border-radius:20px;border:1.5px solid var(--bd);background:var(--bg);font-size:12px;font-weight:700;color:var(--t2);cursor:pointer;white-space:nowrap;transition:all .15s}.cat-chip.active{background:var(--tx);color:#fff;border-color:var(--tx)}
+.filter-selects{display:flex;gap:7px;margin-top:9px}
+.filter-select{flex:1;appearance:none;-webkit-appearance:none;background:var(--s) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239aa3bf'/%3E%3C/svg%3E") no-repeat right 10px center;border:1.5px solid var(--bd);border-radius:20px;padding:6px 28px 6px 12px;font-size:11px;font-weight:700;font-family:var(--f);color:var(--t2);cursor:pointer;outline:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:border-color .15s}
+.filter-select:focus{border-color:var(--tx)}
+.filter-select.active{border-color:var(--tx);color:var(--tx);background-color:var(--bg)}
+.catalog-scroll{overflow-y:auto;flex:1;padding:14px 14px 28px}
+.client-section{margin-bottom:14px;background:var(--s);border:1px solid var(--bd);border-radius:18px;overflow:hidden;box-shadow:var(--sh)}
+.client-header{padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer}
+.client-icon{width:40px;height:40px;border-radius:11px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;font-family:var(--fh)}
+.client-name{font-family:var(--fh);font-size:14px;font-weight:700;letter-spacing:-.2px}
+.client-meta{font-size:10px;color:var(--t3);font-family:var(--mono);margin-top:2px}
+.toggle-arrow{font-size:10px;color:var(--t3);margin-left:auto}
+.products-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 14px 14px;border-top:1px solid var(--bd)}
+.product-card{background:var(--s);border:1px solid var(--bd);border-radius:14px;overflow:hidden;cursor:pointer;transition:box-shadow .2s}
+.product-card:active{box-shadow:var(--sh-md)}
+.product-img{width:100%;aspect-ratio:1/1;object-fit:cover;background:#fff}
+.product-img-ph{width:100%;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;font-size:36px;background:linear-gradient(145deg,#f0eefc,#ede8f8)}
+
+.card-body{padding:10px}
+.card-name{font-family:var(--fh);font-size:12px;font-weight:700;line-height:1.3;margin-bottom:6px}
+
+
+
+.apply-btn{width:100%;padding:7px;border-radius:8px;color:#fff;font-size:11px;font-weight:700;font-family:var(--fh)}
+.card-tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:9px;font-weight:700;font-family:var(--mono);background:var(--bg);border:1px solid var(--bd);color:var(--t2);letter-spacing:.2px}
+.card-tag-cat{background:rgba(79,70,229,.08);border-color:rgba(79,70,229,.2);color:#4f46e5}
+
+/* ── HISTORY TAB ── */
+#historyTab{padding:20px 16px 28px}
+.history-header{margin-bottom:18px}
+.history-title{font-family:var(--fh);font-size:20px;font-weight:800;letter-spacing:-.5px}
+.history-sub{font-size:11px;color:var(--t3);font-family:var(--mono);margin-top:3px}
+.app-card{background:var(--s);border:1px solid var(--bd);border-radius:16px;overflow:hidden;margin-bottom:11px;box-shadow:var(--sh)}
+.app-card-body{padding:13px 15px;display:flex;gap:11px;align-items:flex-start}
+.app-thumb{width:50px;height:50px;border-radius:10px;overflow:hidden;object-fit:cover;background:linear-gradient(145deg,#f0eefc,#ede8f8);flex-shrink:0}
+.app-prod-name{font-family:var(--fh);font-size:13px;font-weight:700;line-height:1.3;margin-bottom:3px}
+.app-client{font-size:11px;color:var(--t3);font-family:var(--mono);margin-bottom:7px}
+.app-footer-approved{padding:9px 14px;background:var(--okl);border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px}
+.app-footer-pending{padding:8px 14px;border-top:1px solid var(--bd);font-size:11px;color:var(--warn);font-family:var(--mono)}
+.tap-url{font-size:11px;font-family:var(--mono);color:var(--ok);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.copy-btn{padding:4px 11px;border-radius:8px;background:var(--tx);color:#fff;font-size:10px;font-weight:700;font-family:var(--fh);transition:background .2s;white-space:nowrap}
+.copy-btn.copied{background:var(--ok)}
+
+/* ── NOTIF TAB ── */
+#notifTab{padding:20px 16px 28px}
+
+/* ── PROFILE TAB ── */
+#profileTab{padding:20px 16px 28px}
+.profile-card{background:var(--s);border:1px solid var(--bd);border-radius:20px;padding:22px 18px;margin-bottom:14px;text-align:center;box-shadow:var(--sh)}
+.profile-avatar{width:72px;height:72px;border-radius:20px;overflow:visible;background:linear-gradient(135deg,#e0d7ff,#d4f5e8);margin:0 auto 12px;position:relative}
+.profile-avatar img{width:100%;height:100%;object-fit:cover;border-radius:20px}
+.line-badge{position:absolute;bottom:-4px;right:-4px;width:22px;height:22px;border-radius:6px;background:var(--line);border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff}
+.profile-name{font-family:var(--fh);font-size:20px;font-weight:800;letter-spacing:-.4px;margin-bottom:3px}
+.profile-handle{font-size:12px;color:var(--t3);font-family:var(--mono);margin-bottom:14px}
+.profile-stats{display:flex;justify-content:center;gap:28px}
+.profile-row{background:var(--s);border:1px solid var(--bd);border-radius:13px;padding:13px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;box-shadow:var(--sh)}
+.profile-row-icon{font-size:17px}
+.profile-row-label{font-size:10px;color:var(--t3);font-family:var(--mono);margin-bottom:2px}
+.profile-row-val{font-size:13px;font-weight:600}
+.edit-btn{padding:5px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg);font-size:11px;color:var(--t2);font-family:var(--mono)}
+.logout-btn{width:100%;margin-top:10px;padding:13px;border-radius:14px;border:1px solid var(--bd);background:var(--bg);font-size:13px;font-weight:600;color:var(--t2)}
+/* ── Edit Profile Modal ── */
+.ep-genre-btn{padding:7px 13px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--bd);background:var(--bg);color:var(--t2);cursor:pointer;transition:all .15s}
+.ep-genre-btn.ep-selected{background:var(--tx);color:#fff;border-color:var(--tx)}
+.ep-style-btn{width:100%;padding:12px 14px;border-radius:14px;border:1.5px solid var(--bd);background:var(--bg);text-align:left;font-size:13px;font-weight:700;color:var(--t2);cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:10px}
+.ep-style-btn.ep-selected{background:var(--tx);color:#fff;border-color:var(--tx)}
+.ep-style-btn.ep-selected span:last-child span{color:rgba(255,255,255,.5)!important}
+
+/* ── Modal ── */
+#modalOverlay{display:none;position:fixed;inset:0;background:rgba(17,16,24,.5);z-index:200;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px)}
+#modalOverlay.open{display:flex}
+#modalBox{position:relative;background:var(--s);width:100%;max-width:430px;max-height:92vh;border-radius:24px 24px 0 0;overflow-y:auto;box-shadow:0 -8px 40px rgba(0,0,0,.18);padding-bottom:env(safe-area-inset-bottom);animation:slideUp .25s cubic-bezier(.25,.46,.45,.94)}
+@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* ── Empty ── */
+.empty{text-align:center;padding:48px 20px;color:var(--t3)}
+.empty-icon{font-size:36px;opacity:.4;margin-bottom:10px}
+.empty-text{font-size:13px;line-height:1.7}
+
+/* ── Animations ── */
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn .3s ease both}
+</style>
 </head>
 <body>
-<script>
-  var GAS_URL = 'https://script.google.com/macros/s/AKfycbxj_KePMzaGKAwJqq6HWO8L5ci68lSsvdglmHUnODv_-X6C9koO-Tg1akxLFZXnq1On/exec';
+<div id="app">
 
-  // LINEのOAuthコールバック (?code=...&state=...) も含めてそのままGASに転送
-  var search = window.location.search;
-  var targetUrl;
-  if (!search || search === '?') {
-    targetUrl = GAS_URL + '?page=creator';
-  } else if (search.indexOf('page=') !== -1) {
-    targetUrl = GAS_URL + search;
-  } else {
-    // ?code=xxx&state=xxx 等のOAuthコールバックパラメータをそのまま転送
-    targetUrl = GAS_URL + search;
+  <!-- ── Loading ── -->
+  <div id="loadingScreen" class="screen active">
+    <div class="loader"></div>
+    <div class="load-title">読み込み中...</div>
+    <div class="load-sub">初回は少し時間がかかります<br>そのままお待ちください</div>
+    <div class="ptrack"><div class="pfill" id="loadPfill"></div></div>
+    <div class="load-foot">
+      <div class="load-brand">TCS Creator Portal</div>
+      <div class="load-pct" id="loadPct">0%</div>
+    </div>
+  </div>
+
+  <!-- ── Login ── -->
+  <div id="loginScreen" class="screen">
+    <div class="login-wrap">
+      <div class="brand-logo" id="portalLogoWrap"><img id="portalLogoImg" src="" style="width:100%;height:100%;object-fit:contain;padding:8px;box-sizing:border-box;display:none" onerror="this.style.display='none';var t=document.getElementById('portalLogoText');if(t)t.style.display=''"><span id="portalLogoText" style="font-size:28px">🛍</span></div>
+      <div class="login-brand">Tik Commerce Studio</div>
+      <div style="display:flex;justify-content:center;margin-bottom:8px">
+        <span class="login-sub-tag">✦ Creator Portal</span>
+      </div>
+      <div class="login-title">
+        <span class="login-title-main">TikTokで<span class="login-title-accent">売れる</span>案件<span style="letter-spacing:-.5em">、</span></span>
+        <span class="login-title-main" style="margin-top:2px;display:block">ここから始まる<span style="letter-spacing:-.5em">。</span></span>
+      </div>
+      <div class="login-desc">LINEで連携するだけ。<br>PR案件への応募からTAPリンク管理まで<br>ぜんぶここでできます。</div>
+      <div id="loginErr" style="display:none;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:12px;text-align:left"></div>
+      <button class="line-btn" id="loginBtn" onclick="startLineLogin()">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect width="22" height="22" rx="6" fill="white" fill-opacity=".25"/><path d="M11 4C7.13 4 4 6.8 4 10.24c0 2.77 1.85 5.18 4.6 6.37l-.5 1.87c-.05.18.14.33.3.23l2.3-1.5c.09.01.19.01.3.01 3.87 0 7-2.8 7-6.24S14.87 4 11 4z" fill="white"/></svg>
+        LINEでログイン・新規登録
+      </button>
+      <div class="login-note">既にTikTok IDで応募済みの方は<br>LINE連携で過去の履歴も引き継げます</div>
+      <div class="login-features">
+        <span class="feat-pill"><span style="font-size:20px">📋</span>案件応募</span>
+        <span class="feat-pill"><span style="font-size:20px">🔗</span>TAPリンク</span>
+        <span class="feat-pill"><span style="font-size:20px">🔔</span>審査通知</span>
+        <span class="feat-pill"><span style="font-size:20px">👤</span>マイページ</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Register ── -->
+  <div id="registerScreen" class="screen">
+    <div class="reg-wrap">
+      <button class="back-btn" onclick="showScreen('loginScreen')">← 戻る</button>
+      <div class="form-title">プロフィール登録</div>
+      <div id="regDisplayName" style="font-size:14px;color:var(--ok);font-weight:700;margin-bottom:6px"></div>
+      <div class="form-desc">あなたのTikTokアカウントを教えてください。</div>
+      <div class="err-msg" id="regErr"></div>
+      <label class="field-label">TIKTOK ID *</label>
+      <div style="display:flex;align-items:center;background:#fff;border:1.5px solid var(--bd);border-radius:12px;overflow:hidden;transition:border-color .15s" onfocusin="this.style.borderColor='var(--tx)'" onfocusout="this.style.borderColor='var(--bd)'">
+        <span style="padding:0 4px 0 16px;font-size:16px;color:var(--t2);font-weight:600;line-height:52px;flex-shrink:0;user-select:none">@</span>
+        <input class="field-input" id="regHandle" placeholder="your_tiktok_id" autocapitalize="none" autocorrect="off" spellcheck="false" style="border:none;border-radius:0;padding-left:2px;background:transparent;flex:1" oninput="this.value=this.value.replace(/^@+/,'')">
+      </div>
+      <label class="field-label" style="margin-top:4px">得意ジャンル（最大3つ）</label>
+      <div style="font-size:11px;color:var(--t3);margin-bottom:10px">あなたのコンテンツに合うジャンルを選んでください</div>
+      <div class="genre-grid" id="genreGrid">
+        <button type="button" class="genre-btn" data-val="美容・コスメ">💄 美容・コスメ</button>
+        <button type="button" class="genre-btn" data-val="スキンケア">🧴 スキンケア</button>
+        <button type="button" class="genre-btn" data-val="フード・ドリンク">🍜 フード・ドリンク</button>
+        <button type="button" class="genre-btn" data-val="ファッション">👗 ファッション</button>
+        <button type="button" class="genre-btn" data-val="ガジェット・家電">📱 ガジェット・家電</button>
+        <button type="button" class="genre-btn" data-val="ヘルスケア・サプリ">💪 ヘルスケア・サプリ</button>
+        <button type="button" class="genre-btn" data-val="ライフスタイル・インテリア">🏠 ライフスタイル・インテリア</button>
+        <button type="button" class="genre-btn" data-val="旅行・アウトドア">✈️ 旅行・アウトドア</button>
+        <button type="button" class="genre-btn" data-val="ペット">🐾 ペット</button>
+        <button type="button" class="genre-btn" data-val="育児・ベビー">👶 育児・ベビー</button>
+        <button type="button" class="genre-btn" data-val="スポーツ・フィットネス">🏃 スポーツ・フィットネス</button>
+        <button type="button" class="genre-btn" data-val="教育・書籍">📚 教育・書籍</button>
+        <button type="button" class="genre-btn" data-val="ゲーム・エンタメ">🎮 ゲーム・エンタメ</button>
+        <button type="button" class="genre-btn" data-val="その他">✨ その他</button>
+      </div>
+      <label class="field-label" style="margin-top:6px">投稿スタイル（1つ選択）</label>
+      <div style="font-size:11px;color:var(--t3);margin-bottom:10px">あなたの動画の雰囲気に近いものを選んでください</div>
+      <div id="styleGrid" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+        <button type="button" class="style-btn" data-val="レビュー系">⭐ レビュー系 <span class="style-desc">商品の使用感・比較を丁寧に紹介</span></button>
+        <button type="button" class="style-btn" data-val="体験談系">💬 体験談系 <span class="style-desc">実体験ベースのリアルなストーリー</span></button>
+        <button type="button" class="style-btn" data-val="ハウツー系">📖 ハウツー系 <span class="style-desc">使い方・テクニックをわかりやすく解説</span></button>
+        <button type="button" class="style-btn" data-val="日常vlog系">📹 日常vlog系 <span class="style-desc">日常に自然に溶け込んだ紹介スタイル</span></button>
+        <button type="button" class="style-btn" data-val="エンタメ系">🎭 エンタメ系 <span class="style-desc">笑えてバズる面白コンテンツ</span></button>
+        <button type="button" class="style-btn" data-val="教育・解説系">🎓 教育・解説系 <span class="style-desc">知識・情報をわかりやすく伝える</span></button>
+      </div>
+      <button class="submit-btn" id="regBtn" onclick="submitRegister()">登録してポータルへ →</button>
+    </div>
+  </div>
+
+  <!-- ── Main App ── -->
+  <div id="appScreen" class="screen">
+    <div class="app-header">
+      <div class="app-header-dot" id="appHeaderDot"><img id="appHeaderLogo" src="" style="width:100%;height:100%;object-fit:contain;padding:3px;display:none;border-radius:6px" onerror="this.style.display='none';var f=document.getElementById('appHeaderFallback');if(f)f.style.display=''"><span id="appHeaderFallback" style="font-size:13px;font-weight:800;color:#fff">T</span></div>
+      <div class="app-header-title" id="headerTitle">ホーム</div>
+      <div class="line-chip">
+        <div class="line-chip-dot"></div>
+        <div class="line-chip-txt">LINE連携済み</div>
+      </div>
+    </div>
+
+    <div class="app-content">
+      <!-- Home -->
+      <div id="homeTab" class="tab-page active"></div>
+      <!-- Catalog -->
+      <div id="catalogTab" class="tab-page">
+        <div class="filter-bar">
+          <div class="filter-bar-toggle" onclick="toggleFilterBar()">
+            <span class="filter-bar-toggle-label">🔍 <span id="filterBarLabel">検索・絞り込み</span></span>
+            <span class="filter-bar-toggle-arrow open" id="filterBarArrow">▼</span>
+          </div>
+          <div class="filter-bar-body" id="filterBarBody">
+            <div class="catalog-search-wrap" style="margin-bottom:10px">
+              <span class="catalog-search-icon">🔍</span>
+              <input class="catalog-search-input" id="catalogSearchInput" type="text" placeholder="商品名・ブランドで検索…" oninput="onCatalogSearch(this.value)" autocomplete="off">
+              <button class="catalog-search-clear" id="catalogSearchClear" onclick="clearCatalogSearch()" style="display:none">×</button>
+            </div>
+            <div class="filter-tabs" style="margin-bottom:10px">
+              <button class="filter-tab active" id="ft-all"      onclick="setCatalogFilter('all')">すべて</button>
+              <button class="filter-tab"        id="ft-instant"  onclick="setCatalogFilter('instant')">⚡ 即参加</button>
+              <button class="filter-tab"        id="ft-approval" onclick="setCatalogFilter('approval')">⏳ 審査あり</button>
+              <button class="filter-tab"        id="ft-invite"   onclick="setCatalogFilter('invite')" style="color:rgba(124,58,237,.8)">✦ 招待</button>
+              <button class="filter-tab"        id="ft-fav"      onclick="setCatalogFilter('fav')" style="color:#e11d48">❤</button>
+            </div>
+            <div class="filter-selects" style="margin-bottom:8px">
+              <select class="filter-select" id="rateFilter" onchange="setCatalogRate(this.value)">
+                <option value="all">💰 料率：すべて</option>
+                <option value="5">5% 以上</option>
+                <option value="10">10% 以上</option>
+                <option value="15">15% 以上</option>
+                <option value="20">20% 以上</option>
+              </select>
+              <select class="filter-select" id="brandFilter" onchange="setCatalogBrand(this.value)">
+                <option value="all">🏷 ブランド：すべて</option>
+              </select>
+            </div>
+            <div class="category-chips" id="categoryChips"></div>
+          </div>
+        </div>
+        <div class="catalog-scroll" id="catalogScroll"></div>
+      </div>
+      <!-- History -->
+      <div id="historyTab" class="tab-page"></div>
+      <!-- Notif -->
+      <div id="notifTab" class="tab-page"></div>
+      <!-- Profile -->
+      <div id="profileTab" class="tab-page"></div>
+    </div>
+
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-tab="homeTab"    onclick="switchTab('homeTab','ホーム')">
+        <div class="nav-icon-wrap"><svg class="nav-svg" viewBox="0 0 24 24"><path d="M3 12L12 3l9 9"/><path d="M5 10v9a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1v-9"/></svg></div>
+        <span class="nav-label">ホーム</span><div class="nav-pip"></div><span class="nav-indicator"></span>
+      </button>
+      <button class="nav-btn" data-tab="catalogTab" onclick="switchTab('catalogTab','PR案件')">
+        <div class="nav-icon-wrap"><svg class="nav-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 13h4"/></svg></div>
+        <span class="nav-label">案件</span><div class="nav-pip"></div><span class="nav-indicator"></span>
+      </button>
+      <button class="nav-btn" data-tab="historyTab" onclick="switchTab('historyTab','応募・参加履歴')">
+        <div class="nav-icon-wrap"><svg class="nav-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></div>
+        <span class="nav-label">履歴</span><div class="nav-pip"></div><span class="nav-indicator"></span>
+      </button>
+      <button class="nav-btn" data-tab="notifTab"   onclick="switchTab('notifTab','通知')">
+        <div class="nav-icon-wrap"><svg class="nav-svg" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div>
+        <span class="nav-label">通知</span><div class="nav-pip"></div>
+        <span class="nav-indicator"></span>
+        <span class="nav-badge" id="notifBadge" style="display:none"></span>
+      </button>
+      <button class="nav-btn" data-tab="profileTab" onclick="switchTab('profileTab','マイページ')">
+        <div class="nav-icon-wrap"><svg class="nav-svg" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+        <span class="nav-label">マイページ</span><div class="nav-pip"></div><span class="nav-indicator"></span>
+      </button>
+    </nav>
+  </div>
+</div>
+
+<!-- ── Detail Modal ── -->
+<div id="modalOverlay" onclick="closeModal()">
+  <div id="modalBox" onclick="event.stopPropagation()"></div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────
+var PORTAL_LOGO_B64 = 'data:image/jpeg;base64,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';
+
+// ── GAS API（fetch経由でgoogle.script.runを代替）────────────────
+var GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxj_KePMzaGKAwJqq6HWO8L5ci68lSsvdglmHUnODv_-X6C9koO-Tg1akxLFZXnq1On/exec';
+
+function gasCall(params, successFn, failFn) {
+  var qs = Object.keys(params).map(function(k) {
+    var v = params[k];
+    if (v === null || v === undefined) return '';
+    if (typeof v === 'object') v = JSON.stringify(v);
+    return encodeURIComponent(k) + '=' + encodeURIComponent(v);
+  }).filter(Boolean).join('&');
+  fetch(GAS_API_URL + '?' + qs, { redirect: 'follow' })
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(data) { if (successFn) successFn(data); })
+    .catch(function(e) { if (failFn) failFn(e); else console.error('gasCall error', e); });
+}
+
+var STATE = {
+  token: null,
+  _lastFetch: null,
+  creator: null,
+  data: null,
+  catalogFilter: 'all',
+  catalogSearch: '',
+  catalogCategory: 'all',
+  catalogRate: 'all',
+  catalogBrand: 'all',
+  favorites: new Set(),
+  expandedClients: {},
+  pendingToken: null,
+};
+
+var TITLES = { homeTab:'ホーム', catalogTab:'PR案件', historyTab:'応募・参加履歴', notifTab:'通知', profileTab:'マイページ' };
+var fmtYen = n => '¥' + (Number(n)||0).toLocaleString();
+var fmtRate = n => { var v=Number(n)||0; return v>0?v+'%':'—'; };
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+
+// ── マルチストア URL 表示（クリエイター向け）────────────────────────────
+var SHOP_LOGOS = {
+  amazon:   'data:image/png;base64,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',
+  rakuten:  'data:image/png;base64,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',
+  yahoo:    'data:image/png;base64,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',
+  qoo10:    'data:image/png;base64,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',
+  zozotown: 'data:image/png;base64,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',
+  tiktok:   'data:image/png;base64,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',
+};
+var SHOP_NAMES = { amazon:'Amazon', rakuten:'楽天市場', yahoo:'Yahoo!ショッピング', qoo10:'Qoo10', zozotown:'ZOZO', tiktok:'TikTok Shop', other:'商品ページ' };
+
+function _detectShopKey_(url) {
+  if (!url) return 'other';
+  var u = url.toLowerCase();
+  if (u.indexOf('tiktok.com') >= 0)    return 'tiktok';
+  if (u.indexOf('amazon.')    >= 0)    return 'amazon';
+  if (u.indexOf('rakuten.')   >= 0)    return 'rakuten';
+  if (u.indexOf('yahoo.co.jp') >= 0)   return 'yahoo';
+  if (u.indexOf('qoo10.')     >= 0)    return 'qoo10';
+  if (u.indexOf('zozo.')      >= 0)    return 'zozotown';
+  return 'other';
+}
+
+function renderShopLinks(shopUrlRaw) {
+  if (!shopUrlRaw) return '';
+  var stores = {};
+  try { stores = JSON.parse(shopUrlRaw); }
+  catch(e) {
+    if (shopUrlRaw.indexOf('http') === 0) stores = { other: shopUrlRaw };
+    else return '';
+  }
+  // otherキーのURLをURLパターンで正しいキーに再マッピング
+  var normalized = {};
+  Object.keys(stores).forEach(function(k) {
+    var url = stores[k];
+    if (!url) return;
+    var realKey = (k === 'other') ? _detectShopKey_(url) : k;
+    normalized[realKey] = url;
+  });
+  var keys = Object.keys(normalized).filter(function(k){ return normalized[k]; });
+  if (!keys.length) return '';
+  var html = '<div style="margin-bottom:16px">'
+    + '<div style="font-size:11px;font-weight:700;color:var(--t3);margin-bottom:10px;letter-spacing:.5px">🛒 商品ページを見る</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:10px">';
+  keys.forEach(function(k) {
+    var name = SHOP_NAMES[k] || k;
+    var imgTag = SHOP_LOGOS[k]
+      ? '<img src="' + SHOP_LOGOS[k] + '" style="width:32px;height:32px;object-fit:contain;border-radius:6px" alt="' + esc(name) + '">'
+      : '<span style="font-size:22px">🛒</span>';
+    html += '<a href="' + esc(normalized[k]) + '" target="_blank" rel="noreferrer" referrerpolicy="no-referrer"'
+      + ' style="display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 12px;background:var(--bg);border:1.5px solid var(--bd);border-radius:14px;text-decoration:none;min-width:60px;transition:all .15s">'
+      + imgTag
+      + '<span style="font-size:9px;font-weight:700;color:var(--t2);text-align:center;line-height:1.2">' + esc(name) + '</span>'
+      + '</a>';
+  });
+  html += '</div></div>';
+  return html;
+}
+// ── Storage helper（localStorage/sessionStorageフォールバック） ──────
+function normalizeDriveUrl(url) {
+  if (!url) return '';
+  var m = url.match(/[?&]id=([^&]+)/);
+  if (!m) m = url.match(/\/d\/([^\/]+)/);
+  if (m) return 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w400';
+  return url;
+}
+
+function storageGet(key) {
+  try { var v=localStorage.getItem(key); if(v!==null) return v; } catch(e) {}
+  try { return sessionStorage.getItem(key); } catch(e) { return null; }
+}
+function storageSet(key, val) {
+  try { localStorage.setItem(key, val); return; } catch(e) {}
+  try { sessionStorage.setItem(key, val); } catch(e) {}
+}
+function storageRemove(key) {
+  try { localStorage.removeItem(key); } catch(e) {}
+  try { sessionStorage.removeItem(key); } catch(e) {}
+}
+
+// ── Boot ───────────────────────────────────────────────────
+// LINEコールバックパラメータをURL paramsから取得（GitHub Pagesホスト）
+var _urlParams  = new URLSearchParams(window.location.search);
+var _LINE_CODE  = _urlParams.get('code')  || '';
+var _LINE_STATE = _urlParams.get('state') || '';
+var _LINE_ERROR = _urlParams.get('error') || '';
+
+function boot() {
+  if (_LINE_ERROR) {
+    _applyBrandingFromCache_();
+    showScreen('loginScreen');
+    showAuthError('LINE認証がキャンセルされました。もう一度お試しください。');
+    return;
   }
 
-  // iframeではなく直接リダイレクト
-  // GAS側のloadingScreenがそのまま表示される
-  window.location.replace(targetUrl);
+  if (_LINE_CODE && _LINE_STATE) {
+    // LINEブラウザはOAuth後にページをリロードすることがある。
+    // 同じcodeでLINE APIを再度呼ぶと「使用済み」エラーになる。
+    // GAS側でキャッシュしているので、重複呼び出しでも正しい結果が返る。
+    showScreen('loadingScreen');
+    gasCall({ action:'lineCallback', code:_LINE_CODE, state:_LINE_STATE },
+      onLineCallback,
+      function(e) { showScreen('loginScreen'); showAuthError('通信エラー: ' + e.message); });
+    return;
+  }
+
+  // 既存トークンがあればそのまま入る
+  var token = storageGet('tcs_portal_token');
+  if (token) {
+    STATE.token = token;
+    loadPortalData();
+  } else {
+    _applyBrandingFromCache_();
+    showScreen('loginScreen');
+  }
+}
+
+function showAuthError(msg) {
+  var el = document.getElementById('loginErr');
+  if (el) { el.textContent = msg; el.style.display = 'block'; }
+  else { alert(msg); }
+}
+
+// ── Screen ─────────────────────────────────────────────────
+function _applyBrandingToDOM_(logoUrl, titleText) {
+  var img = document.getElementById('portalLogoImg');
+  var txt = document.getElementById('portalLogoText');
+  var ttl = document.getElementById('portalTitleText');
+  if (ttl) ttl.textContent = titleText || 'Tik Commerce Studio';
+  var finalUrl = (logoUrl && logoUrl.indexOf('data:') !== 0)
+    ? normalizeDriveUrl(logoUrl) : (logoUrl && logoUrl.indexOf('data:') === 0 ? logoUrl : '');
+  if (img) {
+    if (finalUrl) {
+      if (img.src !== finalUrl) img.src = finalUrl;
+      img.style.display = '';
+      if (txt) txt.style.display = 'none';
+    } else {
+      img.style.display = 'none';
+      if (txt) txt.style.display = '';
+    }
+  }
+  var hImg = document.getElementById('appHeaderLogo');
+  var hFb  = document.getElementById('appHeaderFallback');
+  if (hImg && finalUrl) {
+    if (hImg.src !== finalUrl) hImg.src = finalUrl;
+    hImg.style.display = '';
+    if (hFb) hFb.style.display = 'none';
+  }
+}
+
+function _applyBrandingFromCache_() {
+  _applyBrandingToDOM_('', '');
+  try {
+    var title = localStorage.getItem('tcs_portal_title') || '';
+    if (title) _applyBrandingToDOM_('', title);
+  } catch(e) {}
+}
+
+function _applyPortalBranding_() {
+  var d = STATE.data && STATE.data.list;
+  if (!d) return;
+  var logoUrl   = d.portal_logo_url || '';
+  var titleText = d.portal_title    || 'Tik Commerce Studio';
+  _applyBrandingToDOM_(logoUrl, titleText);
+  try {
+    if (logoUrl)   localStorage.setItem('tcs_portal_logo',  logoUrl);
+    if (titleText) localStorage.setItem('tcs_portal_title', titleText);
+  } catch(e) {}
+}
+
+var _loadPctTimer = null;
+function _startLoadAnim() {
+  var pfill = document.getElementById('loadPfill');
+  var pctEl = document.getElementById('loadPct');
+  if (!pfill || !pctEl) return;
+  pfill.classList.remove('go');
+  pctEl.textContent = '0%';
+  void pfill.offsetWidth;
+  pfill.classList.add('go');
+  var steps = [[0,0],[300,10],[700,22],[1200,38],[1800,52],[2500,65],[3200,76],[3800,85],[4200,91],[4500,95],[4700,97]];
+  if (_loadPctTimer) { _loadPctTimer.forEach(clearTimeout); }
+  _loadPctTimer = steps.map(function(s){
+    return setTimeout(function(){ pctEl.textContent = s[1]+'%'; }, s[0]);
+  });
+}
+function _stopLoadAnim() {
+  var pctEl = document.getElementById('loadPct');
+  if (pctEl) pctEl.textContent = '100%';
+  if (_loadPctTimer) { _loadPctTimer.forEach(clearTimeout); _loadPctTimer = null; }
+}
+function showScreen(id) {
+  if (id === 'loadingScreen') _startLoadAnim();
+  else _stopLoadAnim();
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ── LINE Login ─────────────────────────────────────────────
+function startLineLogin() {
+  var btn = document.getElementById('loginBtn');
+  btn.textContent = '接続中...';
+  btn.disabled = true;
+
+  // タイムアウト対策（15秒で自動復帰）
+  var timeout = setTimeout(function() {
+    btn.textContent = 'LINEでログイン / 新規登録';
+    btn.disabled = false;
+    showAuthError('接続がタイムアウトしました。LINEアプリ内ブラウザで開いてください。');
+  }, 15000);
+
+  gasCall({ action:'lineAuthUrl' },
+    function(res) {
+      clearTimeout(timeout);
+      if (res.error) {
+        btn.textContent = 'LINEでログイン / 新規登録';
+        btn.disabled = false;
+        showAuthError(res.error);
+        return;
+      }
+      try { window.top.location.href = res.url; } catch(e) { window.location.href = res.url; }
+    },
+    function(e) {
+      clearTimeout(timeout);
+      btn.textContent = 'LINEでログイン / 新規登録';
+      btn.disabled = false;
+      showAuthError('エラー: ' + e.message);
+    });
+}
+
+// ── LINE Callback ───────────────────────────────────────────
+function onLineCallback(res) {
+  if (res.error) {
+    showScreen('loginScreen');
+    showAuthError(res.error);
+    return;
+  }
+  if (res.is_new) {
+    STATE.pendingToken = res.portal_token;
+    showScreen('registerScreen');
+    if (res.line_display_name) {
+      var el = document.getElementById('regDisplayName');
+      if (el) el.textContent = res.line_display_name + ' さん、はじめまして！';
+    }
+  } else {
+    // 既存ユーザー: トークン保存してポータルデータ取得
+    STATE.token = res.portal_token;
+    storageSet('tcs_portal_token', res.portal_token);
+    STATE.creator = res.creator;
+    loadPortalData();
+  }
+}
+
+// ── Genre / Style toggle ────────────────────────────────────
+document.addEventListener('click', function(e) {
+  var genreBtn = e.target.classList.contains('genre-btn') ? e.target : e.target.closest('.genre-btn');
+  if (genreBtn) {
+    if (genreBtn.classList.contains('selected')) {
+      genreBtn.classList.remove('selected');
+    } else if (document.querySelectorAll('.genre-btn.selected').length < 3) {
+      genreBtn.classList.add('selected');
+    }
+    return;
+  }
+  var styleBtn = e.target.classList.contains('style-btn') ? e.target : e.target.closest('.style-btn');
+  if (styleBtn) {
+    document.querySelectorAll('.style-btn').forEach(function(b) { b.classList.remove('selected'); });
+    styleBtn.classList.add('selected');
+  }
+});
+function getSelectedGenres() {
+  var selected = [];
+  document.querySelectorAll('.genre-btn.selected').forEach(function(b) {
+    selected.push(b.getAttribute('data-val'));
+  });
+  return selected.join(',');
+}
+function getSelectedStyle() {
+  var btn = document.querySelector('.style-btn.selected');
+  return btn ? btn.getAttribute('data-val') : '';
+}
+
+// ── Register ────────────────────────────────────────────────
+function submitRegister() {
+  var raw    = document.getElementById('regHandle').value.trim();
+  var handle = '@' + raw.replace(/^@+/, '');
+  var errEl  = document.getElementById('regErr');
+  if (!handle) { errEl.textContent='TikTok IDを入力してください'; errEl.className='err-msg show'; return; }
+  errEl.className='err-msg';
+  document.getElementById('regBtn').disabled = true;
+  document.getElementById('regBtn').textContent = '登録中...';
+  var categories = getSelectedGenres();
+  var postingStyle = getSelectedStyle();
+  gasCall({ action:'register', token:STATE.pendingToken, handle:handle, categories:categories, style:postingStyle },
+    function(res) {
+      if (res.error) {
+        errEl.textContent = res.error; errEl.className='err-msg show';
+        document.getElementById('regBtn').disabled=false;
+        document.getElementById('regBtn').textContent='登録してポータルへ →';
+        return;
+      }
+      STATE.token = res.portal_token;
+      storageSet('tcs_portal_token', res.portal_token);
+      STATE.creator = res.creator;
+      STATE.data = {
+        creator:       res.creator,
+        applications:  res.applications  || [],
+        notifications: res.notifications || [],
+        stats:         res.stats         || { total:0, approved:0, pending:0, rejected:0 },
+        list:          res.list          || { clients:[] },
+        base_url:      '',
+      };
+      if (STATE.data.list && STATE.data.list.clients) {
+        STATE.data.list.clients.forEach(function(c) { STATE.expandedClients[c.client_id] = true; });
+      }
+      renderAll();
+      showScreen('appScreen');
+      _applyPortalBranding_();
+    },
+    function(e) {
+      errEl.textContent=e.message; errEl.className='err-msg show';
+      document.getElementById('regBtn').disabled=false;
+      document.getElementById('regBtn').textContent='登録してポータルへ →';
+    });
+}
+
+// ── Load portal data ────────────────────────────────────────
+// ── Portal data cache (sessionStorage) ────────────────────
+var _CACHE_KEY = 'tcs_cache_v2';
+var _CACHE_TTL = 300000 * 60 * 1000; // 3分
+
+function _saveCache(res) {
+  try {
+    sessionStorage.setItem(_CACHE_KEY, JSON.stringify({ ts: Date.now(), data: res }));
+  } catch(e) {}
+}
+function _loadCache() {
+  try {
+    var raw = sessionStorage.getItem(_CACHE_KEY);
+    if (!raw) return null;
+    var obj = JSON.parse(raw);
+    if (Date.now() - obj.ts > _CACHE_TTL) { sessionStorage.removeItem(_CACHE_KEY); return null; }
+    return obj.data;
+  } catch(e) { return null; }
+}
+function _clearCache() {
+  try { sessionStorage.removeItem(_CACHE_KEY); } catch(e) {}
+}
+function _applyPortalData(res) {
+  STATE.data = res;
+  STATE.creator = res.creator;
+  STATE.favorites = new Set((res.creator && res.creator.favorites) || []);
+  if (STATE.data.list && STATE.data.list.clients) {
+    STATE.data.list.clients.forEach(function(c) { STATE.expandedClients[c.client_id] = true; });
+  }
+}
+
+function loadPortalData() {
+  // キャッシュがあれば即表示、なければローディング画面
+  var cached = _loadCache();
+  if (cached) {
+    _applyPortalData(cached);
+    renderAll();
+    showScreen('appScreen');
+    // バックグラウンドで最新データを取得してサイレント更新
+    gasCall({ action:'portalData', token:STATE.token },
+      function(res) {
+        if (res.error && res.reauth) {
+          _clearCache();
+          try { sessionStorage.clear(); } catch(e) {}
+          storageRemove('tcs_portal_token');
+          STATE.token = null; STATE.creator = null; STATE.data = null; STATE.pendingToken = null;
+          showScreen('loginScreen');
+          showAuthError('セッションが切れました。再度ログインしてください。');
+          return;
+        }
+        if (res.error) return;
+        _saveCache(res); _applyPortalData(res); updateNotifBadge();
+      },
+      function() {}); // バックグラウンド失敗は無視
+  } else {
+    // キャッシュなし：通常フロー
+    showScreen('loadingScreen');
+    gasCall({ action:'portalData', token:STATE.token },
+      function(res) {
+        if (res.error && res.reauth) {
+          try { sessionStorage.clear(); } catch(e) {}
+          storageRemove('tcs_portal_token');
+          STATE.token = null; STATE.creator = null; STATE.data = null; STATE.pendingToken = null;
+          showScreen('loginScreen');
+          showAuthError('セッションが切れました。再度ログインしてください。');
+          return;
+        }
+        if (res.error) { showScreen('loginScreen'); showAuthError(res.error); return; }
+        _saveCache(res); _applyPortalData(res); renderAll(); showScreen('appScreen');
+      },
+      function(e) { showScreen('loginScreen'); showAuthError('データ取得エラー: ' + e.message); });
+  }
+}
+
+// ── Tab switch ──────────────────────────────────────────────
+function switchTab(tabId, title) {
+  // タブ切替のたびにバックグラウンドで最新データ取得（描画はしない＝フラッシュなし）
+  STATE._lastFetch = Date.now();
+  gasCall({ action:'portalData', token:STATE.token },
+    function(res) {
+      if (res && !res.error) {
+        _saveCache(res); _applyPortalData(res);
+        var activeTab = document.querySelector('.tab-page.active');
+        if (activeTab) {
+          var aid = activeTab.id;
+          if      (aid === 'catalogTab')  renderCatalog();
+          else if (aid === 'historyTab')  renderHistory();
+          else if (aid === 'notifTab')    { renderNotif(); markNotifsRead(); }
+          else if (aid === 'homeTab')     renderHome();
+        }
+        updateNotifBadge();
+      }
+    });
+  document.querySelectorAll('.tab-page').forEach(function(t) {
+    t.classList.remove('active');
+    t.style.display = 'none';
+  });
+  document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
+  var tab = document.getElementById(tabId);
+  tab.classList.add('active');
+  tab.style.display = '';
+  document.querySelector('[data-tab="'+tabId+'"]').classList.add('active');
+  document.getElementById('headerTitle').textContent = title;
+  if (tabId === 'catalogTab') renderCatalog();
+  else if (tabId === 'historyTab') renderHistory();
+  else if (tabId === 'notifTab') { renderNotif(); markNotifsRead(); }
+  else if (tabId === 'profileTab') renderProfile();
+}
+
+// ── Render all ──────────────────────────────────────────────
+
+function renderAll() {
+  document.querySelectorAll('.tab-page').forEach(function(t) {
+    t.style.display = t.id === 'homeTab' ? 'block' : 'none';
+    t.classList.toggle('active', t.id === 'homeTab');
+  });
+  document.querySelectorAll('.nav-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.tab === 'homeTab');
+  });
+  document.getElementById('headerTitle').textContent = 'ホーム';
+  renderHome();
+  renderHistory(true);
+  renderNotif();
+  renderProfile();
+  updateNotifBadge();
+  // expand all clients by default
+  if (STATE.data.list && STATE.data.list.clients) {
+    STATE.data.list.clients.forEach(c => { STATE.expandedClients[c.client_id] = true; });
+  }
+}
+
+// ── HOME ────────────────────────────────────────────────────
+function renderHome() {
+  var c = STATE.creator;
+  var s = STATE.data.stats;
+  var topics  = STATE.data.topics || [];
+
+  var topicsHtml = '';
+  if (topics.length > 0) {
+    var TYPE_CONFIG = {
+      info:      { label: 'お知らせ', color: '#6366f1', bg: 'rgba(99,102,241,.06)',  line: '#6366f1', icon: '📢' },
+      important: { label: '重要',     color: '#ef4444', bg: 'rgba(239,68,68,.06)',   line: '#ef4444', icon: '🔴' },
+      good:      { label: 'お祝い',   color: '#10b981', bg: 'rgba(16,185,129,.06)',  line: '#10b981', icon: '🎉' },
+      caution:   { label: '注意',     color: '#f59e0b', bg: 'rgba(245,158,11,.06)',  line: '#f59e0b', icon: '⚠️' },
+      manual:    { label: 'マニュアル',color: '#0ea5e9', bg: 'rgba(14,165,233,.06)', line: '#0ea5e9', icon: '📖' },
+    };
+    topicsHtml = '<div style="display:flex;align-items:center;justify-content:space-between;margin:20px 0 10px">'
+      + '<div style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.8px;font-family:var(--mono);text-transform:uppercase">📣 Topics</div>'
+      + '<div style="font-size:10px;color:var(--t3)">'+topics.length+'件</div>'
+      + '</div>'
+      + topics.map(function(t) {
+        var cf = TYPE_CONFIG[t.type] || TYPE_CONFIG.info;
+        var tid = 'topic-body-' + esc(t.topic_id);
+        var hasBody = !!(t.body && t.body.trim());
+        return '<div style="background:var(--s);border:1px solid var(--bd);border-radius:16px;margin-bottom:8px;overflow:hidden;box-shadow:var(--sh);border-left:3px solid '+cf.line+'">'
+          // ヘッダー行
+          + '<div onclick="'+(hasBody?'toggleTopic(\''+tid+'\',this)':'')+'" style="display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:'+(hasBody?'pointer':'default')+';user-select:none;-webkit-user-select:none">'
+          // 種別アイコン丸
+          + '<div style="width:34px;height:34px;border-radius:10px;background:'+cf.bg+';display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">'+cf.icon+'</div>'
+          + '<div style="flex:1;min-width:0">'
+          + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">'
+          + '<span style="font-size:9px;font-weight:700;color:'+cf.color+';background:'+cf.bg+';padding:2px 6px;border-radius:4px;letter-spacing:.3px">'+cf.label+'</span>'
+          + (t.type !== 'manual' ? '<span style="font-size:10px;color:var(--t3)">'+esc(t.created_at)+'</span>' : '')
+          + '</div>'
+          + '<div style="font-size:13px;font-weight:700;color:var(--tx);line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(t.title)+'</div>'
+          + '</div>'
+          + (hasBody ? '<div id="'+tid+'-chevron" style="font-size:10px;color:var(--t3);transition:transform .25s;flex-shrink:0">▼</div>' : '')
+          + '</div>'
+          // 本文エリア
+          + (hasBody
+            ? '<div id="'+tid+'" style="display:none;padding:0 14px 14px 58px">'
+              + '<div style="font-size:12px;color:var(--t2);line-height:1.75;white-space:pre-wrap;padding-top:4px;border-top:1px solid var(--bd)">'+esc(t.body)+'</div>'
+              + '</div>'
+            : '')
+          + '</div>';
+      }).join('');
+  }
+
+  // FAQ HTML生成
+  var faqHtml = (function() {
+    var faqs = (STATE.data.list && STATE.data.list.faqs) || [];
+    if (!faqs.length) return '';
+    var cats = {};
+    faqs.forEach(function(f) {
+      var cat = f.category || 'その他';
+      if (!cats[cat]) cats[cat] = [];
+      cats[cat].push(f);
+    });
+    var h = '<div style="margin-top:20px">'
+      +'<div class="sec-label">❓ よくある質問</div>';
+    Object.keys(cats).forEach(function(cat) {
+      h += '<div style="font-size:10px;font-weight:700;color:#6366f1;margin:12px 0 6px">'+esc(cat)+'</div>';
+      cats[cat].forEach(function(f) {
+        var bid = 'faq-home-'+esc(f.faq_id);
+        h += '<div style="background:var(--s);border:1px solid var(--bd);border-radius:13px;margin-bottom:7px;overflow:hidden;box-shadow:var(--sh)">'
+          +'<div onclick="var b=document.getElementById(\''+bid+'\');var a=document.getElementById(\''+bid+'-a\');if(b.style.display===\'none\'){b.style.display=\'block\';a.textContent=\'▲\';}else{b.style.display=\'none\';a.textContent=\'▼\';}" style="display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer">'
+          +'<span style="font-size:13px;color:#6366f1;flex-shrink:0">Q</span>'
+          +'<div style="flex:1;font-size:12px;font-weight:600;color:var(--tx)">'+esc(f.question)+'</div>'
+          +'<span id="'+bid+'-a" style="font-size:10px;color:var(--t3);flex-shrink:0">▼</span>'
+          +'</div>'
+          +'<div id="'+bid+'" style="display:none;padding:0 14px 13px 38px">'
+          +'<div style="font-size:12px;color:var(--t2);line-height:1.75;white-space:pre-wrap;padding-top:8px;border-top:1px solid var(--bd)">'+esc(f.answer)+'</div>'
+          +'</div>'
+          +'</div>';
+      });
+    });
+    h += '</div>';
+    return h;
+  })();
+
+  document.getElementById('homeTab').innerHTML =
+    '<div class="greeting">'
+    +'<div><div class="greeting-sub">おかえり👋</div><div class="greeting-name">'+esc(c.display_name)+'</div><div style="font-size:11px;color:var(--t3);margin-top:2px">'+esc(c.handle)+'</div></div>'
+    +'<div class="avatar" style="width:48px;height:48px">'+(c.line_picture?'<img src="'+esc(c.line_picture)+'" style="width:100%;height:100%;object-fit:cover">':'')+'</div>'
+    +'</div>'
+    +'<div class="stats-row">'
+    +'<div class="stat-cell"><div class="stat-val">'+s.total+'</div><div class="stat-label">応募数</div></div>'
+    +'<div class="stat-divider"></div>'
+    +'<div class="stat-cell"><div class="stat-val" style="color:var(--ok)">'+(function(){var apps=STATE.data.applications||[];return apps.filter(function(a){return a.status==='posted'||a.status==='live_scheduled';}).length;})()+'</div><div class="stat-label">実施済み</div></div>'
+    +'<div class="stat-divider"></div>'
+    +'<div class="stat-cell"><div class="stat-val" style="color:var(--warn)">'+(function(){var apps=STATE.data.applications||[];return apps.filter(function(a){return a.status==='pending';}).length;})()+'</div><div class="stat-label">PENDING</div></div>'
+    +'</div>'
+    +'<div class="line-banner"><div class="line-banner-icon">✓</div>'
+    +'<div><div class="line-banner-title">LINE連携済み</div><div class="line-banner-desc">審査結果はLINEにリアルタイム通知されます</div></div></div>'
+    + topicsHtml
+    + faqHtml
+    +'<button class="cta-btn" style="margin-top:20px" onclick="switchTab(\'catalogTab\',\'PR案件\')">🛍 新着PR案件を見る <span style="font-family:var(--mono);font-size:11px;opacity:.7">→</span></button>';
+}
+
+// ── CATALOG ─────────────────────────────────────────────────
+function toggleFilterBar() {
+  var body  = document.getElementById('filterBarBody');
+  var arrow = document.getElementById('filterBarArrow');
+  if (!body) return;
+  var isOpen = !body.classList.contains('hidden');
+  if (isOpen) {
+    body.classList.add('hidden');
+    if (arrow) { arrow.classList.remove('open'); }
+  } else {
+    body.classList.remove('hidden');
+    if (arrow) { arrow.classList.add('open'); }
+  }
+}
+
+function _updateFilterBarLabel_() {
+  var label = document.getElementById('filterBarLabel');
+  if (!label) return;
+  var parts = [];
+  var q = STATE.catalogSearch  || '';
+  var f = STATE.catalogFilter  || 'all';
+  var r = STATE.catalogRate    || 'all';
+  var b = STATE.catalogBrand   || 'all';
+  if (q) parts.push('「' + q + '」');
+  var FL = { instant:'⚡即参加', approval:'⏳審査あり', invite:'❆招待', fav:'❤お気に入り' };
+  if (f !== 'all') parts.push(FL[f] || f);
+  if (r !== 'all') parts.push(r + '% 以上');
+  if (b !== 'all') { var bObj = getBrand(b); parts.push(bObj ? bObj.brand_name : b); }
+  label.textContent = parts.length ? parts.join(' · ') : '検索・絞り込み';
+}
+
+function setCatalogFilter(f) {
+  STATE.catalogFilter = f;
+  document.querySelectorAll('.filter-tab').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById('ft-'+f).classList.add('active');
+  _updateFilterBarLabel_();
+  renderCatalog();
+}
+
+function setCatalogRate(val) {
+  STATE.catalogRate = val;
+  var el = document.getElementById('rateFilter');
+  if (el) el.className = 'filter-select' + (val !== 'all' ? ' active' : '');
+  _updateFilterBarLabel_();
+  renderCatalog();
+}
+
+function setCatalogBrand(val) {
+  STATE.catalogBrand = val;
+  var el = document.getElementById('brandFilter');
+  if (el) el.className = 'filter-select' + (val !== 'all' ? ' active' : '');
+  _updateFilterBarLabel_();
+  renderCatalog();
+}
+
+function onCatalogSearch(val) {
+  STATE.catalogSearch = val.trim().toLowerCase();
+  var clearBtn = document.getElementById('catalogSearchClear');
+  if (clearBtn) clearBtn.style.display = val ? 'flex' : 'none';
+  _updateFilterBarLabel_();
+  renderCatalog();
+}
+
+function clearCatalogSearch() {
+  STATE.catalogSearch = '';
+  var inp = document.getElementById('catalogSearchInput');
+  var clr = document.getElementById('catalogSearchClear');
+  if (inp) inp.value = '';
+  if (clr) clr.style.display = 'none';
+  renderCatalog();
+}
+
+function setCatalogCategory(cat) {
+  STATE.catalogCategory = cat;
+  document.querySelectorAll('.cat-chip').forEach(function(b) {
+    b.classList.toggle('active', b.getAttribute('data-cat') === cat);
+  });
+  renderCatalog();
+}
+
+var CATEGORY_PRESETS = ['美容・コスメ','スキンケア','フード・ドリンク','ファッション','ガジェット・家電','ヘルスケア・サプリ','ライフスタイル・インテリア','旅行・アウトドア','ペット','育児・ベビー','スポーツ・フィットネス','教育・書籍','ゲーム・エンタメ','その他'];
+
+function _buildCategoryChips_(allProducts) {
+  // カテゴリチップ
+  var existingCats = {};
+  allProducts.forEach(function(p) { var c = (p.category||'').trim(); if (c) existingCats[c] = true; });
+  var catList = CATEGORY_PRESETS.filter(function(c) { return existingCats[c]; });
+  Object.keys(existingCats).forEach(function(c) { if (CATEGORY_PRESETS.indexOf(c) < 0) catList.push(c); });
+  if (!catList.length) { document.getElementById('categoryChips').innerHTML = ''; }
+  else {
+    var html = '<button class="cat-chip'+(STATE.catalogCategory==='all'?' active':'')+'" data-cat="all" onclick="setCatalogCategory(\'all\')">すべて</button>';
+    catList.forEach(function(c) {
+      html += '<button class="cat-chip'+(STATE.catalogCategory===c?' active':'')+'" data-cat="'+esc(c)+'" onclick="setCatalogCategory(\''+esc(c)+'\')">'+esc(c)+'</button>';
+    });
+    document.getElementById('categoryChips').innerHTML = html;
+  }
+
+  // ブランドドロップダウン（重複排除・ソート）
+  var brandEl = document.getElementById('brandFilter');
+  if (brandEl) {
+    var brands = {};
+    allProducts.forEach(function(p) { var b = (p.brand||'').trim(); if (b) brands[b] = true; });
+    var brandList = Object.keys(brands).sort();
+    var cur = STATE.catalogBrand || 'all';
+    var opts = '<option value="all"'+(cur==='all'?' selected':'')+'>🏷 ブランド：すべて</option>';
+    brandList.forEach(function(b) {
+      var bObj = getBrand(b);
+      var bName = bObj ? (bObj.brand_name || b) : b;
+      opts += '<option value="'+esc(b)+'"'+(cur===b?' selected':'')+'>'+esc(bName)+'</option>';
+    });
+    brandEl.innerHTML = opts;
+    brandEl.className = 'filter-select' + (cur !== 'all' ? ' active' : '');
+  }
+
+  // 料率フィルターの見た目も同期
+  var rateEl = document.getElementById('rateFilter');
+  if (rateEl) rateEl.className = 'filter-select' + ((STATE.catalogRate||'all') !== 'all' ? ' active' : '');
+}
+
+function getBrand(brandId) {
+  if (!brandId) return null;
+  var brands = (STATE.data && STATE.data.list && STATE.data.list.brands) || [];
+  return brands.find(function(b){ return b.brand_id === brandId; }) || null;
+}
+
+function renderCatalog() {
+  var list = STATE.data && STATE.data.list;
+  if (!list || !list.clients) return;
+  var f     = STATE.catalogFilter   || 'all';
+  var q     = STATE.catalogSearch   || '';
+  var cat   = STATE.catalogCategory || 'all';
+  var rate  = STATE.catalogRate     || 'all';
+  var brand = STATE.catalogBrand    || 'all';
+
+  // カテゴリチップ・ブランドドロップダウンの初期化
+  var allProds = [];
+  list.clients.forEach(function(c) { allProds = allProds.concat(c.products); });
+  _buildCategoryChips_(allProds);
+
+  // 特別招待セクションに表示済みの商品IDを記録（重複防止）
+  var _inviteShownIds = new Set();
+
+  var html = '';
+  var totalShown = 0;
+
+  // ── 特別招待セクション（最上部）──────────────────────────────
+  // フィルター・検索なし の場合のみ表示（絞り込み中は通常表示）
+  var showInviteSection = (f === 'all' || f === 'invite') && !q && cat === 'all' && rate === 'all' && brand === 'all';
+  if (showInviteSection) {
+    var inviteProducts = [];
+    list.clients.forEach(function(c) {
+      c.products.forEach(function(p) {
+        if (p.has_special_rate || p.is_invite_only) {
+          inviteProducts.push({ p: p, c: c }); _inviteShownIds.add(p.product_id);
+        }
+      });
+    });
+    if (inviteProducts.length) {
+      html += '<div style="margin-bottom:20px">'
+        +'<div style="display:flex;align-items:center;gap:7px;padding:0 2px;margin-bottom:10px">'
+        +'<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:linear-gradient(135deg,#7c3aed,#a855f7);border-radius:20px;font-size:10px;font-weight:800;color:#fff;letter-spacing:.3px">✦ 特別招待</span>'
+        +'<span style="font-size:10px;color:var(--t3);font-family:var(--mono)">'+inviteProducts.length+'件</span>'
+        +(inviteProducts.length>1?'<span style="margin-left:auto;display:inline-flex;align-items:center;gap:3px;font-size:10px;color:var(--t3)">スワイプで全件表示<span class="invite-hint-arrow">→</span></span>':'')
+        +'</div>'
+        +'<div class="invite-scroll-outer"><div class="invite-scroll-wrap"><div class="invite-scroll-inner">';
+      inviteProducts.forEach(function(obj, pi) {
+        var p = obj.p, c = obj.c;
+        var isI     = p.requires_approval !== 'TRUE' && p.requires_approval !== true;
+        var hasOpen = p.open_rate && Number(p.open_rate) > 0;
+        var dispRate = p.affiliate_rate;
+        var upDiff  = hasOpen ? (Number(dispRate) - Number(p.open_rate)) : 0;
+        var myApps    = (STATE.data.applications || []).filter(function(a){ return a.product_id === p.product_id; });
+        var isPending = myApps.some(function(a){ return a.status === 'pending'; });
+        var hasApplied= myApps.some(function(a){ return a.status !== 'pending' && a.status !== 'rejected'; });
+        var isDone    = hasApplied && !_hasUnappliedAccount_(p.product_id);
+
+        var _bObj2   = getBrand(p.brand); var brandTag2 = _bObj2 ? '<span class="card-tag">'+esc(_bObj2.brand_name)+'</span>' : '';
+        var catTag2  = p.category ? '<span class="card-tag card-tag-cat">'+esc(p.category)+'</span>' : '';
+        var isFav2   = STATE.favorites.has(p.product_id);
+        var isInvite2 = p.has_special_rate || p.is_invite_only;
+
+        var badgeBar2 = '<div style="display:flex;overflow:hidden;border-top:1px solid rgba(124,58,237,.2);">';
+        if (p.is_invite_only)        badgeBar2 += '<div style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:6px 4px;background:linear-gradient(135deg,rgba(124,58,237,.12),rgba(168,85,247,.1));font-size:10px;font-weight:700;color:#7c3aed;border-right:1px solid rgba(124,58,237,.2)">✦ 招待限定</div>';
+        else if (p.has_special_rate) badgeBar2 += '<div style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:6px 4px;background:linear-gradient(135deg,rgba(124,58,237,.1),rgba(168,85,247,.07));font-size:10px;font-weight:700;color:#7c3aed;border-right:1px solid rgba(124,58,237,.2)">✦ 特別料率</div>';
+        badgeBar2 += '<div style="flex:1;display:flex;align-items:center;justify-content:center;gap:3px;padding:6px 4px;'+(isI?'background:rgba(0,168,107,.07);color:var(--ok)':'background:rgba(224,123,0,.07);color:var(--warn)')+';font-size:10px;font-weight:700">'+(isI?'⚡ 即参加可能':'⏳ 事前審査あり')+'</div>';
+        badgeBar2 += '</div>';
+
+        var rateBlock2 = '<div style="padding:10px 10px 0;margin-bottom:8px">';
+        if (hasOpen && upDiff > 0) {
+          rateBlock2 += '<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px">'            +'<span style="font-size:9px;color:var(--t3);font-family:var(--mono)">TikTok公開</span>'            +'<span style="font-size:10px;color:var(--t3);font-family:var(--mono);text-decoration:line-through">'+fmtRate(p.open_rate)+'</span>'            +'<span style="font-size:10px;font-weight:800;color:var(--ok);background:#d4f5e8;padding:1px 7px;border-radius:20px">▲ +'+upDiff.toFixed(1).replace(/\.0$/,'')+'%</span>'            +'</div>';
+        }
+        rateBlock2 += '<div style="display:flex;align-items:baseline;gap:3px">';
+        rateBlock2 += '<span style="font-size:11px;color:rgba(124,58,237,.5);font-family:var(--mono);text-decoration:line-through">'+fmtRate(p.normal_rate)+'</span>'          +'<span style="margin:0 3px;font-size:11px;color:rgba(124,58,237,.4)">→</span>'          +'<span style="font-family:var(--fh);font-size:22px;font-weight:800;color:#7c3aed;line-height:1">'+fmtRate(dispRate)+'</span>';
+        rateBlock2 += '<span style="font-size:10px;color:var(--t3);margin-left:3px">報酬率</span>';
+        rateBlock2 += '</div></div>';
+
+        var _btnLabel2 = isDone ? '✅ 応募済み' : isPending ? '⏳ 審査中' : isI ? '⚡ 今すぐ参加' : '📩 応募する';
+        var _btnBg2    = isDone ? 'var(--t3)' : isPending ? 'var(--warn)' : 'linear-gradient(135deg,#7c3aed,#a855f7)';
+        var applyBtn2  = '<button class="apply-btn" style="background:'+_btnBg2+';'+((isDone||isPending)?'opacity:.75;':'')+'" onclick="event.stopPropagation();openProductModal(\''+esc(c.client_id)+'\',\''+esc(p.product_id)+'\')">'+_btnLabel2+'</button>';
+
+        var imgOverlay2 = isDone
+          ? '<div style="position:absolute;inset:0;background:rgba(30,30,30,.28);display:flex;align-items:center;justify-content:center;pointer-events:none"><span style="padding:4px 10px;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);border-radius:20px;font-size:11px;font-weight:700;color:#fff">✅ 応募済み</span></div>'
+          : isPending ? '<div style="position:absolute;inset:0;background:rgba(224,123,0,.15);display:flex;align-items:center;justify-content:center;pointer-events:none"><span style="padding:4px 10px;background:rgba(224,123,0,.82);backdrop-filter:blur(4px);border-radius:20px;font-size:11px;font-weight:700;color:#fff">⏳ 審査中</span></div>'
+          : '';
+
+        html += '<div class="product-card fade-in" style="width:220px;flex-shrink:0;animation-delay:'+(pi*60)+'ms;border-color:rgba(124,58,237,.35);box-shadow:0 0 0 1.5px rgba(124,58,237,.15),0 4px 16px rgba(124,58,237,.08)" onclick="openProductModal(\''+esc(c.client_id)+'\',\''+esc(p.product_id)+'\')">'
+          +'<div style="position:relative">'          +(p.image_url?'<img class="product-img" src="'+esc(p.image_url)+'" alt=""'+((isDone||isPending)?' style="filter:saturate(.3) brightness(.85)"':'')+'>':'<div class="product-img-ph">🛍</div>')          +imgOverlay2          +'<button data-fav-id="'+esc(p.product_id)+'" onclick="event.stopPropagation();toggleFav(\''+esc(p.product_id)+'\')" style="position:absolute;top:7px;right:7px;width:30px;height:30px;border-radius:50%;border:none;background:rgba(255,255,255,.88);backdrop-filter:blur(4px);font-size:16px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.12);transition:transform .15s">'+(isFav2?'❤️':'🤍')+'</button>'          +'</div>'          +badgeBar2          +'<div class="card-body">'          +(brandTag2||catTag2?'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:5px">'+brandTag2+catTag2+'</div>':'')          +'<div class="card-name">'+esc(p.product_name)+'</div>'          +rateBlock2          +(p.price?'<div style="padding:0 10px;margin-bottom:9px;font-size:11px;color:var(--t3)">販売価格 <span style="font-family:var(--mono);font-weight:600;color:var(--t2)">'+fmtYen(p.price)+'</span></div>':'')          +applyBtn2          +'</div></div>';
+      });
+      html += '</div></div></div>';
+
+      // 区切り線
+      if (f !== 'invite') {
+        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;padding:0 2px">'
+          +'<div style="flex:1;height:1px;background:var(--bd)"></div>'
+          +'<span style="font-size:10px;color:var(--t3);font-family:var(--mono);white-space:nowrap">すべての案件</span>'
+          +'<div style="flex:1;height:1px;background:var(--bd)"></div>'
+          +'</div>';
+      }
+    }
+  }
+  // ──────────────────────────────────────────────────────────
+
+  // ── ブランド優先グループ化 ──
+  var _allProdsFlat = [];
+  list.clients.forEach(function(c) {
+    c.products.forEach(function(p) { _allProdsFlat.push({ p: p, c: c }); });
+  });
+  var _brandMap = {};
+  var _brandOrder = [];
+  var _brandsAll = (list.brands || []);
+  _allProdsFlat.forEach(function(obj) {
+    var p = obj.p; var c = obj.c;
+    var bid = p.brand || ('_client_' + c.client_id);
+    if (!_brandMap[bid]) {
+      _brandMap[bid] = { bid: bid, c: c, bObj: _brandsAll.find(function(b){ return b.brand_id === bid; }) || null, prods: [] };
+      _brandOrder.push(bid);
+    }
+    _brandMap[bid].prods.push({ p: p, c: c });
+  });
+
+  // ブランドの表示順を display_order でソート
+  _brandOrder.sort(function(a, b) {
+    var bObjA = _brandMap[a].bObj;
+    var bObjB = _brandMap[b].bObj;
+    var oa = bObjA ? (parseInt(bObjA.display_order) || 9999) : 9999;
+    var ob = bObjB ? (parseInt(bObjB.display_order) || 9999) : 9999;
+    return oa - ob;
+  });
+
+  _brandOrder.forEach(function(bid) {
+    var grp   = _brandMap[bid];
+    var bObj  = grp.bObj;
+    var c     = grp.c;
+    // フィルター適用
+    var prods = grp.prods.map(function(o){ return o.p; }).filter(function(p) {
+      if (p.is_paused==='TRUE'||p.is_paused===true) return false;
+      var isI = p.requires_approval !== 'TRUE' && p.requires_approval !== true;
+      if (f === 'instant'  && !isI) return false;
+      if (f === 'approval' &&  isI) return false;
+      if (f === 'invite'   && !p.has_special_rate && !p.is_invite_only) return false;
+      if (f === 'fav'      && !STATE.favorites.has(p.product_id)) return false;
+      if (cat !== 'all' && (p.category||'').trim() !== cat) return false;
+      if (rate !== 'all') { var r = parseFloat(p.affiliate_rate)||0; if (r < parseFloat(rate)) return false; }
+      if (brand !== 'all' && (p.brand||'').trim() !== brand) return false;
+      if (q) {
+        var _sb = getBrand(p.brand);
+        var searchTarget = [(p.product_name||''), (p.brand||''), (_sb?_sb.brand_name:''), (p.category||''), (c.client_name||'')].join(' ').toLowerCase();
+        if (searchTarget.indexOf(q) < 0) return false;
+      }
+      return true;
+    });
+    if (!prods.length) return;
+    // 特別招待を最上部に
+    prods.sort(function(a, b) {
+      var aInv = (a.has_special_rate || a.is_invite_only) ? 0 : 1;
+      var bInv = (b.has_special_rate || b.is_invite_only) ? 0 : 1;
+      return aInv - bInv;
+    });
+    totalShown += prods.length;
+
+    // グループヘッダー（ブランド優先）
+    var _dispName  = bObj ? bObj.brand_name : c.client_name;
+    var _logo      = bObj && bObj.logo_url ? normalizeDriveUrl(bObj.logo_url) : c.icon_url;
+    var _color     = (bObj && bObj.color) || c.color || '#6366f1';
+    var _sectionId = 'brand_' + bid;
+    var isExp = STATE.expandedClients[_sectionId] !== false;
+    var iconHtml = _logo
+      ? '<div class="client-icon" style="background:'+esc(_color)+'"><img src="'+esc(_logo)+'" style="width:100%;height:100%;object-fit:cover;border-radius:6px"></div>'
+      : '<div class="client-icon" style="background:'+esc(_color)+'">'+esc((_dispName||'?').charAt(0))+'</div>';
+    html += '<div class="client-section">'
+      +'<div class="client-header" onclick="toggleClient(\''+esc(_sectionId)+'\')">'+iconHtml
+      +'<div><div class="client-name">'+esc(_dispName)+'</div><div class="client-meta">'+prods.length+'商品</div></div>'
+      +'<span class="toggle-arrow">'+(isExp?'▲':'▼')+'</span></div>';
+    if (isExp) {
+      html += '<div class="products-grid">';
+      prods.forEach(function(p, pi) {
+        if (showInviteSection && _inviteShownIds && _inviteShownIds.has(p.product_id)) return;
+        var isI      = p.requires_approval !== 'TRUE' && p.requires_approval !== true;
+        var isInvite = p.has_special_rate || p.is_invite_only;
+        var _bObj    = getBrand(p.brand);
+        var brandTag = _bObj ? '<span class="card-tag">'+esc(_bObj.brand_name)+'</span>' : '';
+        var catTag   = p.category ? '<span class="card-tag card-tag-cat">'+esc(p.category)+'</span>' : '';
+        var hasOpen  = p.open_rate && Number(p.open_rate) > 0;
+        var dispRate = p.affiliate_rate;
+        var upDiff   = hasOpen ? (Number(dispRate) - Number(p.open_rate)) : 0;
+        var myApps    = (STATE.data.applications || []).filter(function(a){ return a.product_id === p.product_id; });
+        var isPending = myApps.some(function(a){ return a.status === 'pending'; });
+        var hasApplied= myApps.some(function(a){ return a.status !== 'pending' && a.status !== 'rejected'; });
+        var isDone    = hasApplied && !_hasUnappliedAccount_(p.product_id);
+        var isFav     = STATE.favorites.has(p.product_id);
+
+        // バッジバー
+        var badgeBar = '<div style="display:flex;overflow:hidden;border-top:1px solid var(--bd);">';
+        if (isInvite) {
+          badgeBar += '<div style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:6px 4px;background:linear-gradient(135deg,rgba(124,58,237,.1),rgba(168,85,247,.07));font-size:10px;font-weight:700;color:#7c3aed;border-right:1px solid rgba(124,58,237,.2)">✦ 特別料率</div>';
+        }
+        badgeBar += '<div style="flex:1;display:flex;align-items:center;justify-content:center;gap:3px;padding:6px 4px;'+(isI?'background:rgba(0,168,107,.07);color:var(--ok)':'background:rgba(224,123,0,.07);color:var(--warn)')+';font-size:10px;font-weight:700">'+(isI?'⚡ 即参加可能':'⏳ 事前審査あり')+'</div>';
+        badgeBar += '</div>';
+
+        // 料率ブロック
+        var rateColor  = isInvite ? '#7c3aed' : 'var(--ok)';
+        var rateBlock  = '<div style="padding:10px 10px 0;margin-bottom:8px">';
+        if (hasOpen && upDiff > 0) {
+          rateBlock += '<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px">'
+            +'<span style="font-size:9px;color:var(--t3);font-family:var(--mono)">TikTok公開</span>'
+            +'<span style="font-size:10px;color:var(--t3);font-family:var(--mono);text-decoration:line-through">'+fmtRate(p.open_rate)+'</span>'
+            +'<span style="font-size:10px;font-weight:800;color:var(--ok);background:#d4f5e8;padding:1px 7px;border-radius:20px">▲ +'+upDiff.toFixed(1).replace(/\.0$/,'')+'%</span>'
+            +'</div>';
+        }
+        rateBlock += '<div style="display:flex;align-items:baseline;gap:3px">'
+          +'<span style="font-family:var(--fh);font-size:22px;font-weight:800;color:'+rateColor+';line-height:1">'+fmtRate(dispRate)+'</span>'
+          +'<span style="font-size:10px;color:var(--t3);margin-left:3px">報酬率</span>'
+          +'</div></div>';
+
+        // 応募ボタン
+        var _btnLabel = isDone ? '✅ 応募済み' : isPending ? '⏳ 審査中' : isI ? '⚡ 今すぐ参加' : '📩 応募する';
+        var _btnBg    = isDone ? 'var(--t3)' : isPending ? 'var(--warn)' : isInvite ? 'linear-gradient(135deg,#7c3aed,#a855f7)' : 'var(--tx)';
+        var applyBtn  = '<button class="apply-btn" style="background:'+_btnBg+';'+((isDone||isPending)?'opacity:.75;':'')+'\" onclick=\"event.stopPropagation();openProductModal(\''+esc(c.client_id)+'\',\''+esc(p.product_id)+'\')">'+_btnLabel+'</button>';
+
+        // 画像オーバーレイ
+        var imgOverlay = isDone
+          ? '<div style="position:absolute;inset:0;background:rgba(30,30,30,.28);display:flex;align-items:center;justify-content:center;pointer-events:none"><span style="padding:4px 10px;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);border-radius:20px;font-size:11px;font-weight:700;color:#fff">✅ 応募済み</span></div>'
+          : isPending ? '<div style="position:absolute;inset:0;background:rgba(224,123,0,.15);display:flex;align-items:center;justify-content:center;pointer-events:none"><span style="padding:4px 10px;background:rgba(224,123,0,.82);backdrop-filter:blur(4px);border-radius:20px;font-size:11px;font-weight:700;color:#fff">⏳ 審査中</span></div>'
+          : '';
+
+        html += '<div class="product-card fade-in" style="animation-delay:'+(pi*50)+'ms'+(isInvite?';border-color:rgba(124,58,237,.35);box-shadow:0 0 0 1.5px rgba(124,58,237,.15),0 4px 16px rgba(124,58,237,.08)':'')+'" onclick="openProductModal(\''+esc(c.client_id)+'\',\''+esc(p.product_id)+'\''+')">'
+          +'<div style="position:relative">'
+          +(p.image_url?'<img class="product-img" src="'+esc(p.image_url)+'" alt=""'+((isDone||isPending)?' style="filter:saturate(.3) brightness(.85)"':'')+'>':'<div class="product-img-ph">🛍</div>')
+          +imgOverlay
+          +'<button data-fav-id="'+esc(p.product_id)+'" onclick="event.stopPropagation();toggleFav(\''+esc(p.product_id)+'\')" style="position:absolute;top:7px;right:7px;width:30px;height:30px;border-radius:50%;border:none;background:rgba(255,255,255,.88);backdrop-filter:blur(4px);font-size:16px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.12);transition:transform .15s">'+(isFav?'❤️':'🤍')+'</button>'
+          +'</div>'
+          +badgeBar
+          +'<div class="card-body">'
+          +(brandTag||catTag?'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:5px">'+brandTag+catTag+'</div>':'')
+          +'<div class="card-name">'+esc(p.product_name)+'</div>'
+          +rateBlock
+          +(p.price?'<div style="padding:0 10px;margin-bottom:9px;font-size:11px;color:var(--t3)">販売価格 <span style="font-family:var(--mono);font-weight:600;color:var(--t2)">'+fmtYen(p.price)+'</span></div>':'')
+          +applyBtn
+          +'</div></div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+
+  if (!totalShown) {
+    var msg = q ? '「'+esc(q)+'」に一致する商品はありません' : '案件がありません';
+    html = '<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">'+msg+'</div>'
+      +(q?'<button onclick="clearCatalogSearch()" style="margin-top:12px;padding:8px 18px;border-radius:20px;border:1.5px solid var(--bd);background:var(--s);font-size:12px;font-weight:700;color:var(--t2)">検索をクリア</button>':'')
+      +'</div>';
+  }
+
+  document.getElementById('catalogScroll').innerHTML = html;
+}
+
+function toggleClient(id) {
+  // 未登録のidはデフォルトtrue（展開）→ 初回タップで閉じる
+  if (STATE.expandedClients[id] === undefined) STATE.expandedClients[id] = true;
+  STATE.expandedClients[id] = !STATE.expandedClients[id];
+  renderCatalog();
+}
+
+// ── HISTORY ─────────────────────────────────────────────────
+function refreshHistory() {
+  var btn = document.getElementById('histRefreshBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '読み込み中…'; }
+  try { sessionStorage.removeItem('tcs_cache_v2'); } catch(e) {}
+  loadPortalData(function() {
+    renderHistory(true);
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 更新'; }
+  });
+}
+
+function renderHistory(force) {
+  var apps = STATE.data && STATE.data.applications || [];
+  // データ未変更なら描画スキップ（フラッシュ防止）
+  var _newHash = _hashApps_(apps);
+  var _htEl = document.getElementById('historyTab');
+  if (!force && _newHash === STATE._lastAppsHash && _htEl && _htEl.innerHTML.length > 100) {
+    return;
+  }
+  STATE._lastAppsHash = _newHash;
+  // スクロール位置保存
+  var _scrollTop = _htEl ? _htEl.scrollTop : 0;
+  // approvedとworkflow系を「進行中」、postedを「完了」に
+  var active  = apps.filter(function(a){ return a.status !== 'rejected' && a.status !== 'posted' && a.status !== 'live_scheduled'; });
+  var posted  = apps.filter(function(a){ return a.status === 'posted' || a.status === 'live_scheduled'; });
+  var rejected= apps.filter(function(a){ return a.status === 'rejected'; });
+
+  var html = '<div class="history-header">'
+    +'<div class="history-title">応募・参加履歴</div>'
+    +'<div class="history-sub">'+apps.length+'件 · 進行中'+active.length+'件 · 完了'+posted.length+'件</div></div>';
+
+  if (!apps.length) {
+    html += '<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">応募履歴はまだありません</div></div>';
+    var refreshBtnHtml = '<button id="histRefreshBtn" onclick="refreshHistory()" style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--bd);background:var(--bg);font-size:11px;font-weight:700;color:var(--t2);cursor:pointer">🔄 更新</button>';
+    var _ht1 = document.getElementById('historyTab'); var _st1 = _ht1 ? _ht1.scrollTop : 0;
+    _ht1.innerHTML = html; if (_st1 > 0) { try { _ht1.scrollTop = _st1; } catch(e) {} }
+    return;
+  }
+
+  // ── ステータス定義 ────────────────────────────────────────────
+  // ステップラベルと「今やること」アクション
+  function getStepInfo(a) {
+    var s = a.status;
+    // 全ステップ定義: { key, label, done }
+    var _hasSample = a.sample_received === 'TRUE' || a.sample_received === true;
+    var steps = [
+      { key: 'approved',          label: '承認・TAPリンク受取' },
+      { key: 'showcase_added',    label: 'ショーケース追加' },
+    ];
+    // 承認リクエスト・承認は常に必要（サンプルあり/なし問わず）
+    steps.push({ key: 'sample_requested',  label: '承認リクエスト送付' });
+    steps.push({ key: 'sample_approved',   label: '承認リクエスト対応' });
+    // サンプルありの場合のみ発送ステップを追加
+    if (_hasSample) {
+      steps.push({ key: 'sample_shipped',    label: 'サンプル発送' });
+    }
+    if (a.draft_required) {
+      steps.push({ key: 'draft_submitted',  label: '下書き提出' });
+      steps.push({ key: 'draft_review_done',label: '下書き確認済み' });
+    }
+    var isLive = a.pr_format === 'live' || a.pr_format === 'LIVE' || a.pr_format === '🔴LIVE' || a.pr_format === '🔴 LIVE';
+    var isBoth = a.pr_format === '両方予定' || a.pr_format === 'both' || a.pr_format === '🎬🔴両方' || a.pr_format === '動画投稿・LIVE両方';
+    if (isBoth) {
+      steps.push({ key: 'posted',        label: '動画投稿完了' });
+      steps.push({ key: 'live_scheduled', label: 'LIVE予定提出' });
+    } else {
+      steps.push({ key: isLive ? 'live_scheduled' : 'posted', label: isLive ? 'LIVE予定提出' : '投稿完了' });
+    }
+
+    var ORDER = steps.map(function(step){ return step.key; });
+    // workflow_statusを優先してステップ位置を特定
+    var wfKey = (a.status === 'approved' && a.workflow_status) ? a.workflow_status : a.status;
+    var curIdx = ORDER.indexOf(wfKey);
+    // _hasSampleでスキップしたサンプル系ステータスが来た場合 → showcase_addedの次へ
+    if (curIdx < 0 && _hasSample && ['sample_requested','sample_approved','sample_shipped'].indexOf(wfKey) >= 0) {
+      curIdx = ORDER.indexOf('showcase_added');
+      if (curIdx >= 0) curIdx += 1; // showcase済み扱い
+    }
+    if (curIdx < 0) curIdx = ORDER.indexOf(a.status);
+    if (curIdx < 0) curIdx = 0;
+
+    return { steps: steps, currentIdx: curIdx, ORDER: ORDER };
+  }
+
+  function renderWorkflowSteps(a) {
+    var info = getStepInfo(a);
+    var html = '<div style="display:flex;align-items:center;gap:0;padding:12px 14px 4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none">';
+    info.steps.forEach(function(step, i) {
+      var done    = i < info.currentIdx || a.status === 'posted' || a.status === 'live_scheduled';
+      var current = i === info.currentIdx && a.status !== 'posted' && a.status !== 'live_scheduled';
+      var color   = done ? 'var(--ok)' : current ? 'var(--ac)' : 'var(--bd)';
+      var bg      = done ? 'var(--okl)' : current ? 'var(--acl)' : 'var(--bg)';
+      html += '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;min-width:52px">'
+        +'<div style="width:20px;height:20px;border-radius:50%;background:'+bg+';border:2px solid '+color+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:'+color+';">'
+        +(done?'✓':current?(i+1):(i+1))
+        +'</div>'
+        +'<div style="font-size:8px;color:'+(current?'var(--ac)':done?'var(--ok)':'var(--t3)')+';font-weight:'+(current||done?'700':'400')+';margin-top:3px;text-align:center;line-height:1.2;max-width:50px">'+step.label+'</div>'
+        +'</div>'
+        +(i < info.steps.length-1 ? '<div style="flex:1;min-width:6px;height:2px;background:'+(done?'var(--ok)':'var(--bd)')+';margin-bottom:12px;flex-shrink:1"></div>' : '');
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function renderActionArea(a) {
+    var s = a.status;
+    var _hasSampleRA = a.sample_received === 'TRUE' || a.sample_received === true;
+    if (s === 'rejected' || s === 'posted' || s === 'live_scheduled') return '';
+
+    // workflow_statusを優先して現在のステップを特定
+    var wfKey = (s === 'approved' && a.workflow_status) ? a.workflow_status : s;
+
+    // draft系
+    if (wfKey === 'draft_submitted') {
+      return '<div style="margin:10px 14px;padding:12px 14px;background:rgba(224,123,0,.07);border:1px solid rgba(224,123,0,.25);border-radius:12px;font-size:12px;color:var(--warn)">'        +'<div style="font-weight:700;margin-bottom:3px">📝 下書きを確認中です</div>'        +'<div style="font-size:11px;opacity:.8">担当者がフィードバックをお送りします。しばらくお待ちください。</div></div>';
+    }
+    if (wfKey === 'draft_review_done') {
+      return renderPostingForm(a);
+    }
+
+    // sample_approved: サンプルあり→発送待ち / なし→投稿フォーム
+    if (wfKey === 'sample_approved') {
+      if (_hasSampleRA) {
+        return '<div style="margin:10px 14px;padding:12px 14px;background:var(--okl);border:1px solid rgba(0,168,107,.25);border-radius:12px;font-size:12px;color:var(--ok)">'          +'<div style="font-weight:700;margin-bottom:3px">✅ 承認リクエスト対応完了！</div>'          +'<div style="font-size:11px;opacity:.8">サンプル発送をお待ちください。届き次第、投稿の準備を進めてください。</div></div>';
+      }
+      if (a.draft_required) {
+        return renderActionBox({ msg:'📝 下書き動画を提出してください', sub:'下書き動画をLINEでご提出いただいた後、「下書き提出を報告する」ボタンを押してください', btn:'下書き提出を報告する', next:'draft_submitted', color:'var(--warn)' }, a);
+      }
+      return renderPostingForm(a);
+    }
+
+    // sample_shipped: 発送後
+    if (wfKey === 'sample_shipped') {
+      if (a.draft_required) {
+        return renderActionBox({ msg:'📦 サンプルが届いたら下書きを提出してください', sub:'下書き動画をLINEでご提出いただいた後、「下書き提出を報告する」ボタンを押してください', btn:'下書き提出を報告する', next:'draft_submitted', color:'var(--warn)' }, a);
+      }
+      return renderPostingForm(a);
+    }
+
+    // 各ステップのアクション定義
+    var CREATOR_ACTIONS = {
+      approved: {
+        msg:    '📋 TAPリンクをクリックし、商品をショーケースに追加してください',
+        sub:    'ショーケースへの追加が完了したら下のボタンを押してください',
+        btn:    'ショーケース追加完了を報告する',
+        next:   'showcase_added',
+        color:  'var(--tx)',
+      },
+      showcase_added: {
+        msg:    '⏳ 担当者が承認リクエストを送付します',
+        sub:    'TikTokアプリのシステム通知に[ripples-inc]からリクエストが届いたら次のステップに進みます。しばらくお待ちください。',
+        btn:    null,
+        next:   null,
+      },
+      sample_requested: {
+        msg:    '📱 TikTokアプリで承認リクエストに対応してください',
+        sub:    'システム通知にて[ripples-inc]からサンプルの承認申請が届きますので、そちらより承認ください',
+        btn:    '承認リクエスト対応済みを報告する',
+        next:   'sample_approved',
+        color:  '#7c3aed',
+        alt:    { text: 'リクエストが届いていない場合', btn: 'LINEで担当者に連絡する', url: 'https://lin.ee/witSpGY' },
+      },
+    };
+
+    var act = CREATOR_ACTIONS[wfKey];
+    if (!act) return '';
+    if (!act.btn) {
+      return '<div style="margin:10px 14px;padding:12px 14px;background:var(--okl);border:1px solid rgba(0,168,107,.25);border-radius:12px;font-size:12px;color:var(--ok)">'        +'<div style="font-weight:700;margin-bottom:3px">'+act.msg+'</div>'        +'<div style="font-size:11px;opacity:.8">'+act.sub+'</div></div>';
+    }
+    return renderActionBox(act, a);
+  }
+  function renderPostingForm(a) {
+    var isLive = a.pr_format === 'live' || a.pr_format === 'LIVE' || a.pr_format === '🔴LIVE' || a.pr_format === '🔴 LIVE';
+    var isBoth = a.pr_format === '両方予定' || a.pr_format === 'both' || a.pr_format === '動画投稿・LIVE両方';
+    var inputId = 'postinput-' + a.application_id;
+    var liveId  = 'liveinput-' + a.application_id;
+
+    if (isBoth) {
+      // 動画URLとLIVE日時の両方入力
+      var donePosted = a.status === 'posted' || a.status === 'live_scheduled';
+      var doneVideo  = a.status === 'live_scheduled'; // postedを先に提出済み扱い
+      return '<div style="margin:10px 14px 14px;padding:12px 14px;background:var(--s2);border:1.5px solid var(--bd);border-radius:12px">'
+        + '<div style="font-size:12px;font-weight:800;margin-bottom:12px">🎬🔴 動画投稿＆LIVEの両方を提出してください</div>'
+        // 動画URL
+        + '<div style="font-size:11px;font-weight:700;margin-bottom:4px;color:var(--ok)">① 投稿URL</div>'
+        + '<input id="' + inputId + '" type="url" placeholder="https://www.tiktok.com/@..." style="width:100%;padding:9px 12px;border-radius:8px;border:1.5px solid var(--bd);background:var(--bg);color:var(--tx);font-size:12px;box-sizing:border-box;margin-bottom:10px">'
+        // LIVE日時
+        + '<div style="font-size:11px;font-weight:700;margin-bottom:4px;color:#7c3aed">② LIVE予定日時</div>'
+        + '<input id="' + liveId + '" type="text" placeholder="2025/04/15 20:00〜" style="width:100%;padding:9px 12px;border-radius:8px;border:1.5px solid var(--bd);background:var(--bg);color:var(--tx);font-size:12px;box-sizing:border-box;margin-bottom:10px">'
+        + '<button style="width:100%;padding:10px;border-radius:10px;background:linear-gradient(135deg,var(--ok),#7c3aed);color:#fff;font-size:12px;font-weight:700;border:none;cursor:pointer" onclick="submitBothPosting(\'' + esc(a.application_id) + '\',\'' + inputId + '\',\'' + liveId + '\')">🎉 動画投稿＆LIVE予定を提出する</button>'
+        + '</div>';
+    } else if (isLive) {
+      return '<div style="margin:10px 14px 14px;padding:12px 14px;background:var(--s2);border:1.5px solid var(--bd);border-radius:12px">'
+        + '<div style="font-size:12px;font-weight:700;margin-bottom:3px">🔴 LIVE実施予定日時を入力してください</div>'
+        + '<div style="font-size:11px;color:var(--t3);margin-bottom:10px;line-height:1.5">例：2025/04/15 20:00〜21:00</div>'
+        + '<input id="' + inputId + '" type="text" placeholder="2025/04/15 20:00〜" style="width:100%;padding:9px 12px;border-radius:8px;border:1.5px solid var(--bd);background:var(--bg);color:var(--tx);font-size:12px;box-sizing:border-box;margin-bottom:10px">'
+        + '<button style="width:100%;padding:10px;border-radius:10px;background:#7c3aed;color:#fff;font-size:12px;font-weight:700;border:none;cursor:pointer" onclick="submitPosting(\'' + esc(a.application_id) + '\',\'live_scheduled\',\'' + inputId + '\')">🔴 LIVE予定を提出する</button>'
+        + '</div>';
+    } else {
+      return '<div style="margin:10px 14px 14px;padding:12px 14px;background:var(--s2);border:1.5px solid var(--bd);border-radius:12px">'
+        + '<div style="font-size:12px;font-weight:700;margin-bottom:3px">🎬 投稿URLを貼り付けてください</div>'
+        + '<div style="font-size:11px;color:var(--t3);margin-bottom:10px;line-height:1.5">TikTokの投稿URLを入力して完了報告してください</div>'
+        + '<input id="' + inputId + '" type="url" placeholder="https://www.tiktok.com/@..." style="width:100%;padding:9px 12px;border-radius:8px;border:1.5px solid var(--bd);background:var(--bg);color:var(--tx);font-size:12px;box-sizing:border-box;margin-bottom:10px">'
+        + '<button style="width:100%;padding:10px;border-radius:10px;background:var(--ok);color:#fff;font-size:12px;font-weight:700;border:none;cursor:pointer" onclick="submitPosting(\'' + esc(a.application_id) + '\',\'posted\',\'' + inputId + '\')">🎉 投稿完了を報告する</button>'
+        + '</div>';
+    }
+  }
+
+  function renderActionBox(act, a) {
+    var html = '<div style="margin:10px 14px 14px;padding:12px 14px;background:var(--s2);border:1.5px solid var(--bd);border-radius:12px">'
+      +'<div style="font-size:12px;font-weight:700;margin-bottom:3px">'+act.msg+'</div>'
+      +'<div style="font-size:11px;color:var(--t3);margin-bottom:10px;line-height:1.5">'+act.sub+'</div>'
+      +'<button style="width:100%;padding:10px;border-radius:10px;background:'+(act.color||'var(--tx)')+';color:#fff;font-size:12px;font-weight:700;border:none;cursor:pointer" id="wfbtn-'+esc(a.application_id)+'" onclick="doWorkflowUpdate(\''+esc(a.application_id)+'\',\''+esc(act.next)+'\')">'+act.btn+'</button>';
+    if (act.alt) {
+      html += '<div style="margin-top:8px;text-align:center;font-size:11px;color:var(--t3)">'+esc(act.alt.text)+' → <a href="'+esc(act.alt.url)+'" target="_blank" rel="noreferrer" style="color:var(--ac);font-weight:700">'+esc(act.alt.btn)+'</a></div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  // ── リスト描画 ──
+  function renderAppCard(a, i) {
+    var isPending = a.status === 'pending';
+    var isRejected= a.status === 'rejected';
+    var isPosted  = a.status === 'posted' || a.status === 'live_scheduled';
+    var statusBadge = {
+      pending:          '<span class="badge badge-pending">⏳ 審査中</span>',
+      approved:         '<span class="badge badge-approved">✅ 承認済み</span>',
+      showcase_added:   '<span class="badge" style="background:rgba(0,168,107,.1);color:var(--ok);border:1px solid rgba(0,168,107,.2)">📋 ショーケース追加済み</span>',
+      sample_requested: '<span class="badge" style="background:rgba(124,58,237,.1);color:#7c3aed;border:1px solid rgba(124,58,237,.2)">📱 承認リクエスト送付済み</span>',
+      sample_approved:  '<span class="badge" style="background:rgba(79,70,229,.1);color:#4f46e5;border:1px solid rgba(79,70,229,.2)">✅ 承認対応済み</span>',
+      sample_shipped:   '<span class="badge" style="background:rgba(0,168,107,.1);color:var(--ok);border:1px solid rgba(0,168,107,.2)">📦 サンプル発送済み</span>',
+      draft_submitted:  '<span class="badge" style="background:rgba(224,123,0,.1);color:var(--warn);border:1px solid rgba(224,123,0,.2)">📝 下書き提出済み</span>',
+      posted:           '<span class="badge" style="background:linear-gradient(135deg,rgba(0,168,107,.15),rgba(79,70,229,.1));color:var(--ok);border:1px solid rgba(0,168,107,.2)">🎉 投稿完了</span>',
+      live_scheduled:   '<span class="badge" style="background:rgba(124,58,237,.1);color:#7c3aed;border:1px solid rgba(124,58,237,.2)">🔴 LIVE予定提出済み</span>',
+      draft_review_done:'<span class="badge" style="background:rgba(0,168,107,.1);color:var(--ok);border:1px solid rgba(0,168,107,.2)">✅ 下書き確認済み</span>',
+      rejected:         '<span class="badge badge-rejected">❌ 見送り</span>',
+    }[a.status] || '<span class="badge">'+esc(a.status)+'</span>';
+
+    var card = '<div class="app-card fade-in" style="animation-delay:'+(i*60)+'ms">'
+      +'<div class="app-card-body">'
+      +'<img class="app-thumb" src="'+esc(a.image_url)+'" onerror="this.src=\'\'" alt="">'
+      +'<div style="flex:1;min-width:0">'
+      +'<div class="app-prod-name">'+esc(a.product_name)+'</div>'
+      +'<div class="app-client">'+esc(a.client_name)+' · '+esc(a.applied_at)+'</div>'
+      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px">'+statusBadge
+      +'<span style="font-size:11px;color:var(--ok);font-family:var(--mono);font-weight:600">成果報酬 '+fmtRate(a.affiliate_rate)+'</span>'
+      +'</div></div></div>';
+
+    // TAPリンク表示（approved以上でURLあり）
+    if (a.affiliate_url && !isPending && !isRejected) {
+      card += '<div class="app-footer-approved">'
+        +'<span style="font-size:11px">🔗</span>'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="display:flex;align-items:center;gap:6px">'
+        +'<span class="tap-url" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(a.affiliate_url)+'</span>'
+        +'<a href="'+esc(a.affiliate_url)+'" target="_blank" rel="noreferrer" style="flex-shrink:0;padding:6px 14px;background:var(--tx);color:#fff;border-radius:8px;font-size:11px;font-weight:700;text-decoration:none">TAPリンクを開く</a>'
+        +'</div>'
+        +(a.tap_expiry ? '<div style="font-size:10px;color:var(--t3);margin-top:3px">⏱ 有効期限: '+esc(a.tap_expiry)+'</div>' : '')
+        +'</div>'
+        +'</div>';
+    }
+    if (isPending) {
+      card += '<div class="app-footer-pending">💬 審査中です。結果はLINEでお知らせします。</div>';
+    }
+
+    // ワークフローステップ（審査待ち・却下・投稿完了以外）
+    if (!isPending && !isRejected) {
+      card += renderWorkflowSteps(a);
+      card += renderActionArea(a);
+    }
+
+    card += '</div>';
+    return card;
+  }
+
+  // 進行中
+  if (active.length) {
+    html += '<div style="font-size:11px;font-weight:700;color:var(--t3);margin:0 0 10px;font-family:var(--mono)">▸ 進行中 ('+active.length+')</div>';
+    active.forEach(function(a, i) { html += renderAppCard(a, i); });
+  }
+  // 完了
+  if (posted.length) {
+    html += '<div style="font-size:11px;font-weight:700;color:var(--ok);margin:16px 0 10px;font-family:var(--mono)">▸ 投稿完了 ('+posted.length+')</div>';
+    posted.forEach(function(a, i) { html += renderAppCard(a, active.length + i); });
+  }
+  // 見送り
+  if (rejected.length) {
+    html += '<div style="font-size:11px;font-weight:700;color:var(--t3);margin:16px 0 10px;font-family:var(--mono)">▸ 見送り ('+rejected.length+')</div>';
+    rejected.forEach(function(a, i) { html += renderAppCard(a, active.length + posted.length + i); });
+  }
+
+  if (_htEl) { _htEl.innerHTML = html; if (_scrollTop > 0) { try { _htEl.scrollTop = _scrollTop; } catch(e) {} } }
+}
+
+function doWorkflowUpdate(appId, newStatus) {
+  var btn = document.getElementById('wfbtn-' + appId);
+  if (btn) { btn.disabled = true; btn.textContent = '送信中…'; }
+  gasCall({ action:'updateStatus', token:STATE.token, appId:appId, status:newStatus, extra:'' },
+    function(r) {
+      if (r && r.success) {
+        var apps = STATE.data.applications || [];
+        var app  = apps.find(function(a){ return a.application_id === appId; });
+        if (app) app.status = newStatus;
+        renderHistory(true);
+      } else {
+        if (btn) { btn.disabled = false; btn.textContent = '再試行'; }
+        alert('エラー: ' + (r && r.error || '不明なエラー'));
+      }
+    },
+    function(e) { if (btn) { btn.disabled = false; btn.textContent = '再試行'; } alert('エラー: ' + e.message); });
+}
+
+function submitBothPosting(appId, videoInputId, liveInputId) {
+  var videoInput = document.getElementById(videoInputId);
+  var liveInput  = document.getElementById(liveInputId);
+  var videoUrl   = videoInput ? videoInput.value.trim() : '';
+  var liveDate   = liveInput  ? liveInput.value.trim()  : '';
+  if (!videoUrl) { alert('投稿URLを入力してください'); return; }
+  if (!liveDate) { alert('LIVE予定日時を入力してください'); return; }
+  var btn = liveInput ? liveInput.nextElementSibling : null;
+  if (btn) { btn.disabled = true; btn.textContent = '送信中…'; }
+  // 両方まとめて保存: posted→live_scheduled の順で2回更新
+  gasCall({ action:'updateStatus', token:STATE.token, appId:appId, status:'posted', extra:videoUrl },
+    function(r1) {
+      if (!r1 || !r1.success) { if (btn) { btn.disabled = false; btn.textContent = '再試行'; } alert('エラー: ' + (r1 && r1.error || '不明')); return; }
+      gasCall({ action:'updateStatus', token:STATE.token, appId:appId, status:'live_scheduled', extra:liveDate },
+        function(r2) {
+          if (r2 && r2.success) {
+            var apps = STATE.data.applications || [];
+            var app  = apps.find(function(a){ return a.application_id === appId; });
+            if (app) app.status = 'live_scheduled';
+            renderHistory(true);
+          } else { if (btn) { btn.disabled = false; btn.textContent = '再試行'; } alert('エラー: ' + (r2 && r2.error || '不明')); }
+        },
+        function(e) { if (btn) { btn.disabled = false; btn.textContent = '再試行'; } alert(e.message); });
+    },
+    function(e) { if (btn) { btn.disabled = false; btn.textContent = '再試行'; } alert(e.message); });
+}
+
+function submitPosting(appId, newStatus, inputId) {
+  var input = document.getElementById(inputId);
+  var extra = input ? input.value.trim() : '';
+  if (!extra) {
+    var msg = newStatus === 'live_scheduled' ? 'LIVE予定日時を入力してください' : '投稿URLを入力してください';
+    alert(msg);
+    return;
+  }
+  var btn = input ? input.nextElementSibling : null;
+  if (btn) { btn.disabled = true; btn.textContent = '送信中…'; }
+  gasCall({ action:'updateStatus', token:STATE.token, appId:appId, status:newStatus, extra:extra },
+    function(r) {
+      if (r && r.success) {
+        var apps = STATE.data.applications || [];
+        var app  = apps.find(function(a){ return a.application_id === appId; });
+        if (app) app.status = newStatus;
+        renderHistory();
+      } else {
+        if (btn) { btn.disabled = false; btn.textContent = '再試行'; }
+        alert('エラー: ' + (r && r.error || '不明なエラー'));
+      }
+    },
+    function(e) { if (btn) { btn.disabled = false; btn.textContent = '再試行'; } alert('エラー: ' + e.message); });
+}
+
+// ── NOTIF ───────────────────────────────────────────────────
+function renderNotif() {
+  var notifs = STATE.data.notifications || [];
+  var html = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">'
+    +'<div style="font-family:var(--fh);font-size:20px;font-weight:800;letter-spacing:-.5px">通知</div>'
+    +'<button style="font-size:11px;color:var(--t3);font-family:var(--mono)" onclick="markNotifsRead()">すべて既読</button>'
+    +'</div>';
+  if (!notifs.length) {
+    html += '<div class="empty"><div class="empty-icon">🔔</div><div class="empty-text">通知はありません</div></div>';
+  } else {
+    notifs.forEach(function(n, i) {
+      var icon = n.type==='approved'?'✅':n.type==='rejected'?'❌':'📢';
+      var bg   = n.type==='approved'?'var(--okl)':n.type==='rejected'?'var(--redl)':'rgba(99,102,241,.08)';
+      html += '<div class="notif-item'+(n.read?'':' unread')+' fade-in" style="animation-delay:'+(i*50)+'ms">'
+        +'<div class="notif-icon" style="background:'+bg+'">'+icon+'</div>'
+        +'<div style="flex:1"><div class="notif-msg">'+esc(n.message)+'</div>'
+        +'<div class="notif-time">'+esc(n.created_at)+'</div></div>'
+        +(n.read?'':'<span class="notif-dot"></span>')
+        +'</div>';
+    });
+  }
+  document.getElementById('notifTab').innerHTML = html;
+}
+
+function updateNotifBadge() {
+  var notifs = STATE.data && STATE.data.notifications || [];
+  var count = notifs.filter(n=>!n.read).length;
+  var badge = document.getElementById('notifBadge');
+  badge.style.display = count > 0 ? 'flex' : 'none';
+  badge.textContent = count;
+}
+
+function markNotifsRead() {
+  if (!STATE.token) return;
+  gasCall({ action:'markRead', token:STATE.token }, function() {
+    if (STATE.data && STATE.data.notifications) {
+      STATE.data.notifications.forEach(function(n) { n.read = true; });
+    }
+    updateNotifBadge(); renderNotif();
+  });
+}
+
+// ── PROFILE ─────────────────────────────────────────────────
+function renderProfile() {
+  var c = STATE.creator;
+  var s = STATE.data.stats;
+  var approvalRate = s.total > 0 ? Math.round(s.approved / s.total * 100) + '%' : '—';
+
+  var GENRE_ICONS = {'美容・コスメ':'💄','スキンケア':'🧴','フード・ドリンク':'🍜','ファッション':'👗','ガジェット':'📱','ヘルスケア':'💪','ライフスタイル':'🏠','旅行':'✈️','ペット':'🐾','育児・ベビー':'👶'};
+  var STYLE_MAP = {'レビュー系':'⭐','体験談系':'💬','ハウツー系':'📖','日常vlog系':'📹','エンタメ系':'🎭','教育・解説系':'🎓'};
+
+  var genres = (c.genres || c.categories || '').split(',').map(function(g){return g.trim();}).filter(Boolean);
+  var genreHtml = genres.length > 0
+    ? genres.map(function(g){ return '<span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;background:var(--bg);border:1px solid var(--bd);font-size:12px;font-weight:600">'+(GENRE_ICONS[g]||'🏷')+' '+esc(g)+'</span>'; }).join('')
+    : '<span style="font-size:12px;color:var(--t3)">未設定</span>';
+
+  var styleVal = c.posting_style || '';
+  var styleHtml = styleVal
+    ? '<span style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:12px;background:var(--tx);color:#fff;font-size:12px;font-weight:700">'+(STYLE_MAP[styleVal]||'')+' '+esc(styleVal)+'</span>'
+    : '<span style="font-size:12px;color:var(--t3)">未設定</span>';
+
+  var subHandles = c.sub_handles || [];
+  var subAccHtml = '<div style="background:var(--s);border:1px solid var(--bd);border-radius:13px;padding:13px 15px;margin-bottom:8px">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+    +'<div style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.6px">TikTok アカウント</div>'
+    +'</div>'
+    // メインアカウント
+    +'<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:#fff;border:1px solid var(--bd);border-radius:10px;margin-bottom:7px">'
+    +'<span style="font-size:16px">🎵</span>'
+    +'<div style="flex:1"><div style="font-size:12px;font-weight:700;font-family:var(--mono)">'+esc(c.handle)+'</div>'
+    +'<div style="font-size:10px;color:var(--t3);margin-top:1px">メインアカウント</div></div>'
+    +'<span style="font-size:10px;background:var(--tx);color:#fff;padding:2px 8px;border-radius:10px;font-weight:700">MAIN</span>'
+    +'</div>'
+    // サブアカウント一覧
+    + subHandles.map(function(h, i){
+      return '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:#fff;border:1px solid var(--bd);border-radius:10px;margin-bottom:7px">'
+        +'<span style="font-size:16px">🎵</span>'
+        +'<div style="flex:1"><div style="font-size:12px;font-weight:700;font-family:var(--mono)">'+esc(h.startsWith('@')?h:'@'+h)+'</div>'
+        +'<div style="font-size:10px;color:var(--t3);margin-top:1px">サブアカウント</div></div>'
+        +'<button onclick="removeSubHandle('+i+')" style="padding:4px 10px;border-radius:8px;border:1px solid rgba(220,38,38,.3);background:rgba(220,38,38,.05);color:#dc2626;font-size:11px;font-weight:600;cursor:pointer">削除</button>'
+        +'</div>';
+    }).join('')
+    // 追加ボタン（最大3つまで）
+    + (subHandles.length < 3
+      ? '<button onclick="openAddSubHandle()" style="width:100%;padding:10px;border-radius:10px;border:1.5px dashed var(--bd);background:transparent;font-size:12px;font-weight:600;color:var(--t3);cursor:pointer">＋ サブアカウントを追加</button>'
+      : '<div style="font-size:11px;color:var(--t3);text-align:center;padding:6px 0">サブアカウントは最大3つまで登録できます</div>')
+    +'</div>';
+
+  document.getElementById('profileTab').innerHTML =
+    '<div class="profile-card">'
+    +'<div class="profile-avatar">'+(c.line_picture?'<img src="'+esc(c.line_picture)+'">':'')
+    +'<div class="line-badge">✓</div></div>'
+    +'<div class="profile-name">'+esc(c.display_name)+'</div>'
+    +'<div class="profile-handle">'+esc(c.handle)+'</div>'
+    +'<div class="profile-stats">'
+    +'<div style="text-align:center"><div style="font-family:var(--fh);font-size:18px;font-weight:800">'+s.total+'</div><div style="font-size:9px;color:var(--t3);font-family:var(--mono);margin-top:2px">応募数</div></div>'
+    +'<div style="width:1px;background:var(--bd)"></div>'
+    +'<div style="text-align:center"><div style="font-family:var(--fh);font-size:18px;font-weight:800;color:var(--ok)">'+s.approved+'</div><div style="font-size:9px;color:var(--t3);font-family:var(--mono);margin-top:2px">承認数</div></div>'
+    +'<div style="width:1px;background:var(--bd)"></div>'
+    +'<div style="text-align:center"><div style="font-family:var(--fh);font-size:18px;font-weight:800;color:#4f46e5">'+approvalRate+'</div><div style="font-size:9px;color:var(--t3);font-family:var(--mono);margin-top:2px">承認率</div></div>'
+    +'</div></div>'
+    +'<div class="profile-row"><span class="profile-row-icon">🎵</span><div style="flex:1"><div class="profile-row-label">TikTok ID</div><div class="profile-row-val">'+esc(c.handle)+'</div></div></div>'
+    +'<div class="profile-row"><span class="profile-row-icon">💬</span><div style="flex:1"><div class="profile-row-label">LINE連携</div><div class="profile-row-val" style="color:var(--ok)">連携済み ✓</div></div></div>'
+    + subAccHtml
+    +'<div style="background:var(--s);border:1px solid var(--bd);border-radius:13px;padding:13px 15px;margin-bottom:8px">'
+    +'<div style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.6px;margin-bottom:10px">得意ジャンル</div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:7px">'+genreHtml+'</div></div>'
+    +'<div style="background:var(--s);border:1px solid var(--bd);border-radius:13px;padding:13px 15px;margin-bottom:14px">'
+    +'<div style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.6px;margin-bottom:10px">投稿スタイル</div>'
+    +styleHtml+'</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:14px">'
+    +'<button onclick="openEditProfile()" style="flex:1;padding:11px;border-radius:12px;border:1.5px solid var(--bd);background:var(--bg);font-size:13px;font-weight:600;color:var(--t2)">✏️ ジャンル・スタイルを編集</button>'
+    +'</div>'
+    +'<button class="logout-btn" onclick="logout()">ログアウト</button>';
+}
+
+// ── Modal (product detail) ───────────────────────────────────
+function findProduct(clientId, productId) {
+  var list = STATE.data && STATE.data.list;
+  if (!list) return null;
+  for (var i=0;i<list.clients.length;i++) {
+    if (list.clients[i].client_id === clientId) {
+      var prods = list.clients[i].products;
+      for (var j=0;j<prods.length;j++) {
+        if (prods[j].product_id === productId) return { product: prods[j], client: list.clients[i] };
+      }
+    }
+  }
+  return null;
+}
+
+function openProductModal(clientId, productId) {
+  var found = findProduct(clientId, productId);
+  if (!found) return;
+  var p = found.product, c = found.client;
+  // グローバルに保存（_doApplyFromModal_用）
+  window._currentModalClientId = clientId;
+  window._currentModalProductId = productId;
+  var isI = p.requires_approval !== 'TRUE' && p.requires_approval !== true;
+  var pts = (p.selling_points||'').split('\n').filter(Boolean);
+
+  var hasOpen  = p.open_rate && Number(p.open_rate) > 0;
+  var isInvite = p.has_special_rate || p.is_invite_only;
+  var upFromOpen = hasOpen ? (Number(p.affiliate_rate) - Number(p.open_rate)) : 0;
+
+  // 料率ビジュアルブロック
+  var rateVisual = '<div style="margin-bottom:18px">';
+  // 「TCSに来た価値」の見出し
+  if (hasOpen || isInvite) {
+    rateVisual += '<div style="font-size:12px;font-weight:800;color:var(--t2);margin-bottom:10px">💰 報酬率の比較</div>';
+    rateVisual += '<div style="display:flex;flex-direction:column;gap:8px">';
+    // オープン料率（TikTok公開）
+    if (hasOpen) {
+      rateVisual += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg);border:1px solid var(--bd);border-radius:12px">'
+        +'<div><div style="font-size:10px;color:var(--t3);margin-bottom:2px">TikTok公開料率</div>'
+        +'<div style="font-size:10px;color:var(--t3)">誰でも応募できる料率</div></div>'
+        +'<div style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--t2)">'+fmtRate(p.open_rate)+'</div>'
+        +'</div>';
+    }
+    // TCS特別料率
+    var tcsRate = isInvite ? p.normal_rate : p.affiliate_rate;
+    if (tcsRate && !isInvite) {
+      // 通常クリエイター → TCS特別料率が最高
+      rateVisual += '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:linear-gradient(135deg,rgba(0,168,107,.06),rgba(0,168,107,.03));border:1.5px solid rgba(0,168,107,.25);border-radius:12px">'
+        +'<div><div style="font-size:10px;font-weight:700;color:var(--ok);margin-bottom:2px">★ TCS特別料率</div>'
+        +(hasOpen&&upFromOpen>0?'<div style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:#d4f5e8;border-radius:20px;font-size:10px;font-weight:700;color:var(--ok)">▲ +'+upFromOpen.toFixed(1).replace(/\.0$/,'')+'% UP</div>':'<div style="font-size:10px;color:var(--ok)">TCS経由クリエイター限定</div>')
+        +'</div>'
+        +'<div style="font-family:var(--fh);font-size:26px;font-weight:800;color:var(--ok)">'+fmtRate(p.affiliate_rate)+'</div>'
+        +'</div>';
+    } else if (isInvite) {
+      // 招待クリエイター → TCS特別を挟んで招待料率を最高に
+      var inviteUpFromOpen = hasOpen ? (Number(p.affiliate_rate) - Number(p.open_rate)) : 0;
+      var inviteUpFromTcs  = p.normal_rate ? (Number(p.affiliate_rate) - Number(p.normal_rate)) : 0;
+      rateVisual += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(0,168,107,.04);border:1px solid rgba(0,168,107,.15);border-radius:12px">'
+        +'<div><div style="font-size:10px;font-weight:600;color:var(--ok);margin-bottom:1px">TCS特別料率</div>'
+        +'<div style="font-size:10px;color:var(--t3)">TCS経由クリエイター向け</div></div>'
+        +'<div style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--ok)">'+fmtRate(p.normal_rate)+'</div>'
+        +'</div>';
+      rateVisual += '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 14px;background:linear-gradient(135deg,rgba(124,58,237,.1),rgba(168,85,247,.07));border:2px solid rgba(124,58,237,.3);border-radius:14px;box-shadow:0 4px 16px rgba(124,58,237,.1)">'
+        +'<div><div style="font-size:11px;font-weight:800;color:#7c3aed;margin-bottom:4px">✦ 招待限定料率</div>'
+        +(inviteUpFromOpen>0?'<div style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:rgba(124,58,237,.12);border-radius:20px;font-size:10px;font-weight:700;color:#7c3aed">▲ 公開比 +'+inviteUpFromOpen.toFixed(1).replace(/\.0$/,'')+'%</div>':'')
+        +(inviteUpFromTcs>0?'<div style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:rgba(124,58,237,.12);border-radius:20px;font-size:10px;font-weight:700;color:#7c3aed;margin-top:3px">▲ 特別比 +'+inviteUpFromTcs.toFixed(1).replace(/\.0$/,'')+'%</div>':'')
+        +'</div>'
+        +'<div style="font-family:var(--fh);font-size:30px;font-weight:800;color:#7c3aed;line-height:1">'+fmtRate(p.affiliate_rate)+'</div>'
+        +'</div>';
+    }
+    rateVisual += '</div>';
+  } else {
+    // オープン料率なし・招待なし → シンプル表示
+    rateVisual += '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:linear-gradient(135deg,rgba(0,168,107,.07),rgba(0,168,107,.03));border:1.5px solid rgba(0,168,107,.25);border-radius:14px">'
+      +'<div><div style="font-size:10px;font-weight:700;color:var(--ok);margin-bottom:2px">報酬率</div><div style="font-size:11px;color:var(--t3)">TCS経由クリエイター向け</div></div>'
+      +'<div style="font-family:var(--fh);font-size:28px;font-weight:800;color:var(--ok)">'+fmtRate(p.affiliate_rate)+'</div>'
+      +'</div>';
+  }
+  rateVisual += '</div>';
+
+  var _modalApps = (STATE.data.applications || []).filter(function(a){ return a.product_id === p.product_id; });
+  var isPending = _modalApps.some(function(a){ return a.status === 'pending'; });
+  var hasApplied= _modalApps.some(function(a){ return a.status !== 'pending' && a.status !== 'rejected'; });
+  var isDone    = hasApplied && !_hasUnappliedAccount_(p.product_id);
+  var isFav = STATE.favorites.has(p.product_id);
+
+  var html = '<div style="padding-bottom:28px">'
+    +'<div style="position:sticky;top:0;z-index:20;display:flex;justify-content:flex-end;padding:10px 12px 0;pointer-events:none">'
+    +'<button onclick="closeModal()" style="pointer-events:auto;width:34px;height:34px;border-radius:50%;border:none;background:rgba(0,0,0,.42);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#fff;font-size:17px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.2)">✕</button>'
+    +'</div>'
+    +(p.image_url?'<img src="'+esc(p.image_url)+'" style="width:100%;max-height:200px;object-fit:cover;display:block;margin-top:-44px" onerror="this.style.marginTop=\'0\';this.style.display=\'none\'">':'')
+    +'<div style="padding:20px 20px 0">'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">'
+    +(isInvite?'<span class="badge" style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(168,85,247,.1));color:#7c3aed;border:1px solid rgba(124,58,237,.25)">✦ '+(p.is_invite_only?'招待限定':'特別料率')+'</span>':'')
+    +'<span class="badge '+(isI?'badge-instant':'badge-approval')+'">'+(isI?'⚡ 即参加可能':'⏳ 事前審査あり')+'</span>'
+    +'<span class="badge" style="background:var(--bg);color:var(--t2);border:1px solid var(--bd)">'+esc(c.client_name)+'</span>'
+    +'<button id="modalFavBtn" onclick="toggleFav(\''+esc(p.product_id)+'\')" style="margin-left:auto;background:none;border:none;font-size:22px;cursor:pointer;line-height:1;padding:0">'+(isFav?'❤️':'🤍')+'</button>'
+    +'</div>'
+    +'<div style="font-family:var(--fh);font-size:20px;font-weight:800;letter-spacing:-.5px;line-height:1.25;margin-bottom:8px">'+esc(p.product_name)+'</div>'
+    +renderShopLinks(p.shop_url)
+    +(p.price?'<div style="font-size:11px;color:var(--t3);margin-bottom:14px">販売価格 <span style="font-family:var(--mono);font-weight:700;color:var(--t2)">'+fmtYen(p.price)+'</span></div>':'')
+    +(p.result_summary?'<div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:12px;font-weight:600">🏆 '+esc(p.result_summary)+'</div>':'')
+    +(p.reward_note?'<div style="background:var(--warnl);border:1px solid #fde68a;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:12px;font-weight:600;color:var(--warn)">🎁 '+esc(p.reward_note)+'</div>':'')
+    +(p.description?'<div style="font-size:13px;color:var(--t2);line-height:1.75;margin-bottom:16px;white-space:pre-wrap">'+esc(p.description)+'</div>':'')
+    +rateVisual
+    +(pts.length?'<div style="font-size:12px;font-weight:800;color:var(--t2);margin-bottom:8px">📣 訴求ポイント</div>'
+      +'<div style="background:#f9f8ff;border:1px solid #ede8ff;border-radius:12px;padding:14px;margin-bottom:16px">'
+      +pts.map(function(pt){return '<div style="display:flex;gap:8px;margin-bottom:6px;font-size:12px;color:var(--t2);line-height:1.55"><span>✅</span><span>'+esc(pt)+'</span></div>'}).join('')
+      +'</div>':'')
+    +(p.regulations?'<div style="font-size:12px;font-weight:800;color:var(--t2);margin-bottom:8px">📋 レギュレーション</div>'
+      +'<div style="background:var(--bg);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:16px;font-size:13px;color:var(--t2);line-height:1.7;white-space:pre-wrap">'+esc(p.regulations)+'</div>':'')
+    +(p.ng_items?'<div style="font-size:12px;font-weight:800;color:var(--t2);margin-bottom:8px">⛔ NG事項</div>'
+      +'<div style="background:var(--redl);border:1px solid #fecaca;border-radius:12px;padding:14px;margin-bottom:16px;font-size:13px;color:#991b1b;line-height:1.7;white-space:pre-wrap">'+esc(p.ng_items)+'</div>':'')
+    +(p.orientation_url?'<a href="'+esc(p.orientation_url)+'" target="_blank" rel="noreferrer" style="display:flex;align-items:center;gap:8px;padding:12px 14px;background:var(--bg);border:1.5px solid var(--bd);border-radius:12px;font-size:13px;font-weight:700;color:var(--t2);text-decoration:none;margin-bottom:16px">📄 オリエンシートを見る <span style="opacity:.4;font-size:11px;margin-left:auto">↗</span></a>':'')
+    +(function(){
+        var videos = (p.video_urls||'').split(',').map(function(v){return v.trim();}).filter(Boolean);
+        if (!videos.length) return '';
+        var rows = videos.map(function(url, i) {
+          // TikTok or YouTube or generic
+          var icon = /tiktok\.com/i.test(url) ? '🎵' : /youtu/i.test(url) ? '▶️' : '🎬';
+          var label = /tiktok\.com/i.test(url) ? 'TikTok参考動画 '+(i+1)
+                    : /youtu/i.test(url)       ? 'YouTube参考動画 '+(i+1)
+                    : '参考動画 '+(i+1);
+          return '<a href="'+esc(url)+'" target="_blank" rel="noreferrer" style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--bg);border:1.5px solid var(--bd);border-radius:12px;font-size:12px;font-weight:700;color:var(--t2);text-decoration:none;margin-bottom:8px">'
+            +'<span style="font-size:18px;flex-shrink:0">'+icon+'</span>'
+            +'<span style="flex:1">'+esc(label)+'</span>'
+            +'<span style="opacity:.4;font-size:11px">↗</span>'
+            +'</a>';
+        }).join('');
+        return '<div style="font-size:12px;font-weight:800;color:var(--t2);margin-bottom:8px">🎬 参考動画</div>'+rows+'<div style="margin-bottom:8px"></div>';
+      })()
+    +'<div id="modalApplyArea" style="background:'+(isDone?'#fef2f2':isInvite?'linear-gradient(135deg,rgba(124,58,237,.07),rgba(168,85,247,.04))':'var(--bg)')+';border:'+(isDone?'1.5px solid #fecaca':isInvite?'1.5px solid rgba(124,58,237,.2)':'1px solid var(--bd)')+';border-radius:16px;padding:18px">'
+    +(isDone
+      ? '<div style="text-align:center">'
+        +'<div style="font-size:28px;margin-bottom:10px">✅</div>'
+        +'<div style="font-family:var(--fh);font-size:15px;font-weight:800;color:#dc2626;margin-bottom:8px">この案件は過去に実施済みです</div>'
+        +'<div style="font-size:12px;color:#dc2626;opacity:.75;line-height:1.7;margin-bottom:16px">再参加・別商品のご相談は<br>LINEにてお気軽にご連絡ください</div>'
+        +'<a href="https://lin.ee/witSpGY" target="_blank" rel="noreferrer" style="display:inline-flex;align-items:center;gap:8px;padding:12px 24px;background:#06C755;border-radius:12px;color:#fff;font-weight:800;font-size:13px;text-decoration:none">💬 LINEで相談する</a>'
+        +'</div>'
+                  : hasApplied
+        ? '<div style="font-family:var(--fh);font-size:14px;font-weight:800;margin-bottom:6px">📩 別アカウントで応募する</div>'          +'<div style="font-size:11px;color:var(--t2);margin-bottom:14px">一部のアカウントはすでに応募済みです</div>'          +'<button class="btn-primary" style="'+(isInvite?'background:linear-gradient(135deg,#7c3aed,#a855f7);':'')+'" onclick="_doApplyFromModal_()">'          +(isI?'⚡ TAPリンクを受け取る':'📩 応募する')          +'</button>'          +'<button class="btn-secondary" style="margin-top:8px" onclick="closeModal()">キャンセル</button>'      : isPending
+        ? '<div style="text-align:center">'
+          +'<div style="font-size:28px;margin-bottom:10px">⏳</div>'
+          +'<div style="font-family:var(--fh);font-size:15px;font-weight:800;color:var(--warn);margin-bottom:8px">審査中です</div>'
+          +'<div style="font-size:12px;color:var(--warn);opacity:.85;line-height:1.7">応募を受け付けました。担当者が確認次第、ご連絡します。</div>'
+          +'</div>'
+        : '<div style="font-family:var(--fh);font-size:14px;font-weight:800;margin-bottom:6px">'+(isI?'⚡ 今すぐ参加できます':'📩 この案件に応募する')+'</div>'
+          +'<div style="font-size:11px;color:var(--t2);margin-bottom:14px">'+(isI?'応募するとすぐにTAPリンクがLINEで届きます📩':'応募後、担当者が確認次第LINEでご連絡します')+'</div>'
+          +'<button class="btn-primary" style="'+(isInvite?'background:linear-gradient(135deg,#7c3aed,#a855f7);':'')+'" onclick="doApply(\''+esc(c.client_id)+'\',\''+esc(p.product_id)+'\')">'+(isI?'⚡ TAPリンクを受け取る':'📩 応募する')+'</button>'
+          +'<button class="btn-secondary" style="margin-top:8px" onclick="closeModal()">キャンセル</button>'
+    )
+    +'</div>'
+    +'</div></div>';
+
+  document.getElementById('modalBox').innerHTML = html;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function quickApply(clientId, productId) {
+  openProductModal(clientId, productId);
+  setTimeout(function() {
+    var el = document.getElementById('modalApplyArea');
+    if (el) el.scrollIntoView({behavior:'smooth', block:'center'});
+  }, 300);
+}
+
+function openAddSubHandle() {
+  var area = document.getElementById('modalApplyArea');
+  // モーダルがない文脈なので専用のボトムシートを作る
+  var sheet = document.createElement('div');
+  sheet.id = 'subHandleSheet';
+  sheet.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:flex;align-items:flex-end';
+  sheet.innerHTML =
+    '<div style="width:100%;background:#fff;border-radius:20px 20px 0 0;padding:22px 20px 36px" onclick="event.stopPropagation()">'
+    +'<div style="text-align:center;margin-bottom:18px"><div style="width:36px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 14px"></div>'
+    +'<div style="font-size:15px;font-weight:800">サブアカウントを追加</div></div>'
+    +'<div style="font-size:12px;color:var(--t3);margin-bottom:10px">追加するTikTok IDを入力してください</div>'
+    +'<div style="display:flex;align-items:center;background:#f7f6f3;border:1.5px solid #e0ddd8;border-radius:12px;overflow:hidden;margin-bottom:6px" onfocusin="this.style.borderColor=\'#1a1833\'" onfocusout="this.style.borderColor=\'#e0ddd8\'">'
+    +'<span style="padding:0 4px 0 16px;font-size:16px;font-weight:600;line-height:52px;flex-shrink:0">@</span>'
+    +'<input id="subHandleInput" placeholder="sub_account_id" autocapitalize="none" autocorrect="off" spellcheck="false" style="flex:1;padding:14px 14px 14px 2px;border:none;background:transparent;font-size:15px;outline:none" oninput="this.value=this.value.replace(/^@+/,\'\')">'
+    +'</div>'
+    +'<div id="subHandleErr" style="font-size:11px;color:#dc2626;min-height:16px;margin-bottom:12px"></div>'
+    +'<button onclick="submitAddSubHandle()" style="width:100%;padding:14px;border-radius:14px;border:none;background:#1a1833;color:#fff;font-size:14px;font-weight:800;cursor:pointer;margin-bottom:10px">追加する</button>'
+    +'<button onclick="document.getElementById(\'subHandleSheet\').remove()" style="width:100%;padding:12px;border-radius:14px;border:1.5px solid #e0ddd8;background:#fff;font-size:13px;font-weight:600;cursor:pointer">キャンセル</button>'
+    +'</div>';
+  sheet.addEventListener('click', function(){ sheet.remove(); });
+  document.body.appendChild(sheet);
+  setTimeout(function(){ document.getElementById('subHandleInput').focus(); }, 100);
+}
+
+function submitAddSubHandle() {
+  var raw = (document.getElementById('subHandleInput').value || '').trim().replace(/^@+/,'');
+  var err = document.getElementById('subHandleErr');
+  if (!raw) { err.textContent = 'TikTok IDを入力してください'; return; }
+  // 既存ハンドルと重複チェック
+  var c = STATE.creator;
+  var all = [c.handle.replace(/^@/,'').toLowerCase()].concat((c.sub_handles||[]).map(function(h){return h.replace(/^@/,'').toLowerCase();}));
+  if (all.indexOf(raw.toLowerCase()) !== -1) { err.textContent = 'そのアカウントはすでに登録されています'; return; }
+
+  var newSubs = (c.sub_handles || []).concat('@' + raw);
+  err.textContent = '';
+  gasCall({ action:'updateProfile', token:STATE.token, updates:{ sub_handles: newSubs.join(',') } },
+    function(res) {
+      if (res && res.error) { if(err) err.textContent = res.error; return; }
+      STATE.creator.sub_handles = newSubs;
+      var sheet = document.getElementById('subHandleSheet');
+      if (sheet) sheet.remove();
+      renderProfile();
+    },
+    function(e) { if(err) err.textContent = e.message; });
+}
+
+function removeSubHandle(idx) {
+  var c = STATE.creator;
+  var newSubs = (c.sub_handles || []).filter(function(_,i){ return i !== idx; });
+  gasCall({ action:'updateProfile', token:STATE.token, updates:{ sub_handles: newSubs.join(',') } },
+    function(res) {
+      if (res && res.error) { showToast(res.error); return; }
+      STATE.creator.sub_handles = newSubs;
+      renderProfile();
+    });
+}
+
+// ── Apply flow (3 steps) ────────────────────────────────────
+// STATE._applyCtx: { clientId, productId, sampleReceived, sampleChoice }
+
+// ── お気に入り ───────────────────────────────────────────────
+function toggleFav(productId) {
+  var wasFav = STATE.favorites.has(productId);
+  if (wasFav) STATE.favorites.delete(productId);
+  else        STATE.favorites.add(productId);
+
+  // カード上のハートだけ更新（チラつき防止 — renderCatalog不要）
+  document.querySelectorAll('[data-fav-id="' + productId + '"]').forEach(function(btn) {
+    btn.textContent = STATE.favorites.has(productId) ? '❤️' : '🤍';
+  });
+  // モーダルのハートも更新
+  var mBtn = document.getElementById('modalFavBtn');
+  if (mBtn) mBtn.textContent = STATE.favorites.has(productId) ? '❤️' : '🤍';
+  // ❤タブを開いている場合はフィルター再適用
+  if (STATE.catalogFilter === 'fav') renderCatalog();
+
+  gasCall({ action:'toggleFav', token:STATE.token, productId:productId },
+    function(r) {
+      if (r && r.favorites) {
+        STATE.favorites = new Set(r.favorites);
+        document.querySelectorAll('[data-fav-id="' + productId + '"]').forEach(function(btn) {
+          btn.textContent = STATE.favorites.has(productId) ? '❤️' : '🤍';
+        });
+        var mBtn2 = document.getElementById('modalFavBtn');
+        if (mBtn2) mBtn2.textContent = STATE.favorites.has(productId) ? '❤️' : '🤍';
+        if (STATE.catalogFilter === 'fav') renderCatalog();
+      }
+    },
+    function() {
+      if (wasFav) STATE.favorites.add(productId);
+      else        STATE.favorites.delete(productId);
+      document.querySelectorAll('[data-fav-id="' + productId + '"]').forEach(function(btn) {
+        btn.textContent = STATE.favorites.has(productId) ? '❤️' : '🤍';
+      });
+    });
+}
+
+// ── 全アカウントハンドル取得 ────────────────────────────────────
+function _getAllHandles_() {
+  var c = STATE.creator;
+  var subs = c.sub_handles || [];
+  if (typeof subs === 'string') subs = subs.split(',').map(function(h){ return h.trim(); }).filter(Boolean);
+  var main = (c.handle || '').replace(/^@/,'').toLowerCase();
+  var all = [main];
+  subs.forEach(function(h){ var n=h.replace(/^@/,'').toLowerCase(); if(n && all.indexOf(n)<0) all.push(n); });
+  return all;
+}
+
+// ── 商品に対して未応募のアカウントがあるか ───────────────────────
+function _hasUnappliedAccount_(productId) {
+  var allHandles = _getAllHandles_();
+  var apps = (STATE.data.applications || []).filter(function(a){
+    return a.product_id === productId && a.status !== 'rejected';
+  });
+  var appliedHandles = apps.map(function(a){ return (a.creator_handle||a.handle||'').replace(/^@/,'').toLowerCase(); });
+  return allHandles.some(function(h){ return appliedHandles.indexOf(h) < 0; });
+}
+
+function _doApplyFromModal_() {
+  if (window._currentModalClientId && window._currentModalProductId) {
+    doApply(window._currentModalClientId, window._currentModalProductId);
+  }
+}
+
+function doApply(clientId, productId) {
+  var found = findProduct(clientId, productId);
+  if (!found) return;
+  var p = found.product;
+  STATE._applyCtx = { clientId: clientId, productId: productId };
+
+  // sub_handles が文字列で来る場合も配列に正規化
+  var subHandles = STATE.creator.sub_handles;
+  if (typeof subHandles === 'string') {
+    subHandles = subHandles.split(',').map(function(h){ return h.trim(); }).filter(Boolean);
+  }
+  subHandles = subHandles || [];
+
+
+  // サブ垢の有無に関わらず常にアカウント選択を表示
+  _renderAccountSelectStep_(p, subHandles);
+}
+
+function _renderAccountSelectStep_(p, subHandles) {
+  var area = document.getElementById('modalApplyArea');
+  if (!area) return;
+  var c = STATE.creator;
+  var mainHandle = c.handle.startsWith('@') ? c.handle : '@'+c.handle;
+  var allAccounts = [{ handle: mainHandle, isMain: true }]
+    .concat(subHandles.map(function(h){ return { handle: h.startsWith('@')?h:'@'+h, isMain: false }; }));
+
+  // invite_only商品の場合、invited_handlesに含まれるアカウントだけに絞る
+  if (p.is_invite_only && p.invited_handles) {
+    var invitedNorms = p.invited_handles.split(',').map(function(h){ return h.replace(/^@/,'').toLowerCase().trim(); }).filter(Boolean);
+    allAccounts = allAccounts.filter(function(acc){
+      return invitedNorms.indexOf(acc.handle.replace(/^@/,'').toLowerCase()) >= 0;
+    });
+  }
+
+
+  // 応募済みハンドルを取得
+  var _apps = (STATE.data.applications || []).filter(function(a){
+    return a.product_id === STATE._applyCtx.productId && a.status !== 'rejected';
+  });
+  var _appliedHandles = _apps.map(function(a){ return (a.creator_handle||a.handle||'').replace(/^@/,'').toLowerCase(); });
+
+  var btns = allAccounts.map(function(acc, i){
+    var handleNorm = acc.handle.replace(/^@/,'').toLowerCase();
+    var alreadyApplied = _appliedHandles.indexOf(handleNorm) >= 0;
+    var statusLabel = alreadyApplied ? ' <span style="color:var(--ok);font-weight:700">✅ 応募済み</span>' : '';
+    return '<button data-handle="'+esc(acc.handle)+'" class="acc-sel-btn" '+(alreadyApplied?'disabled':'')+' style="width:100%;padding:14px 16px;border-radius:14px;border:1.5px solid var(--bd);background:'+(alreadyApplied?'var(--s)':'var(--bg)')+';font-size:13px;font-weight:700;color:'+(alreadyApplied?'var(--t3)':'var(--t2)')+';cursor:'+(alreadyApplied?'default':'pointer')+';text-align:left;display:flex;align-items:center;gap:12px;margin-bottom:8px;opacity:'+(alreadyApplied?'.6':'1')+'">'
+      +'<span style="font-size:20px">🎵</span>'
+      +'<div style="flex:1"><div style="font-family:var(--mono)">'+esc(acc.handle)+'</div>'
+      +'<div style="font-size:11px;font-weight:400;color:var(--t3);margin-top:2px">'+(acc.isMain?'メインアカウント':'サブアカウント')+statusLabel+'</div></div>'
+      +'</button>';
+  }).join('');
+
+  area.innerHTML =
+    '<div style="text-align:center;padding:4px 0 14px">'
+    +'<div style="font-size:26px;margin-bottom:10px">🎵</div>'
+    +'<div style="font-family:var(--fh);font-size:16px;font-weight:800;margin-bottom:6px">どのアカウントで応募しますか？</div>'
+    +'<div style="font-size:12px;color:var(--t3);margin-bottom:18px">この案件に使用するTikTokアカウントを選択してください</div>'
+    +'</div>'
+    + btns
+    +'<button class="btn-secondary" style="margin-top:4px" onclick="closeModal()">キャンセル</button>';
+
+  // data属性でイベント登録（onclick escaping問題を回避）
+  area.querySelectorAll('.acc-sel-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      _onAccountSelected_(this.getAttribute('data-handle'));
+    });
+  });
+}
+
+function _onAccountSelected_(handle) {
+  STATE._applyCtx.applyHandle = handle;
+  var found = findProduct(STATE._applyCtx.clientId, STATE._applyCtx.productId);
+  if (!found) return;
+  var p = found.product;
+  if (p.draft_required) _renderDraftConfirmStep_();
+  else _renderPrFormatStep_(p);
+}
+
+function _renderDraftConfirmStep_() {
+  var area = document.getElementById('modalApplyArea');
+  if (!area) return;
+  // 戻り先: サブアカウントがあればアカウント選択、なければキャンセル
+  var found = findProduct(STATE._applyCtx.clientId, STATE._applyCtx.productId);
+  var p = found ? found.product : null;
+  var subHandles = STATE.creator.sub_handles;
+  if (typeof subHandles === 'string') subHandles = subHandles.split(',').map(function(h){ return h.trim(); }).filter(Boolean);
+  subHandles = subHandles || [];
+  var backBtn = subHandles.length > 0
+    ? '<button class="btn-secondary" style="margin-top:10px" onclick="_renderAccountSelectStep_(findProduct(STATE._applyCtx.clientId,STATE._applyCtx.productId).product, (typeof STATE.creator.sub_handles===\'string\'?STATE.creator.sub_handles.split(\',\').map(function(h){return h.trim();}).filter(Boolean):STATE.creator.sub_handles||[]))">← 戻る</button>'
+    : '<button class="btn-secondary" style="margin-top:10px" onclick="closeModal()">キャンセル</button>';
+  area.innerHTML =
+    '<div style="text-align:center;padding:4px 0 12px">'
+    +'<div style="font-size:28px;margin-bottom:10px">📝</div>'
+    +'<div style="font-family:var(--fh);font-size:16px;font-weight:800;margin-bottom:10px">下書き確認が必要です</div>'
+    +'</div>'
+    +'<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:14px;padding:16px;margin-bottom:18px">'
+    +'<div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:8px">⚠️ この案件は投稿前に下書き提出が必要です</div>'
+    +'<div style="font-size:12px;color:#78350f;line-height:1.75">'
+    +'PR投稿の前に、担当者への下書き確認・承認が必要です。<br>'
+    +'確認なしでの投稿はできません。<br>'
+    +'以上をご理解いただいたうえで応募してください。'
+    +'</div>'
+    +'</div>'
+    +'<label style="display:flex;align-items:flex-start;gap:10px;padding:14px;background:var(--bg);border:1.5px solid var(--bd);border-radius:12px;cursor:pointer;margin-bottom:16px">'
+    +'<input type="checkbox" id="draftConsent" style="margin-top:2px;flex-shrink:0" onchange="var b=document.getElementById(\'draftConsentBtn\');b.disabled=!this.checked;b.style.opacity=this.checked?\'1\':\'0.4\'">'
+    +'<span style="font-size:12px;font-weight:600;color:var(--t2);line-height:1.6">投稿前に下書き確認が必要であることを理解しました</span>'
+    +'</label>'
+    +'<button id="draftConsentBtn" disabled onclick="_onDraftConsented_()" style="width:100%;padding:14px;border-radius:14px;border:none;background:var(--tx);color:#fff;font-size:14px;font-weight:800;cursor:pointer;opacity:0.4;transition:opacity .15s">同意して応募に進む →</button>'
+    + backBtn;
+}
+
+function _onDraftConsented_() {
+  var found = findProduct(STATE._applyCtx.clientId, STATE._applyCtx.productId);
+  if (found) _renderPrFormatStep_(found.product);
+}
+
+function _renderPrFormatStep_(p) {
+  var area = document.getElementById('modalApplyArea');
+  if (!area) return;
+  // 戻り先: draft_requiredなら下書き同意へ、サブアカウントがあればアカウント選択へ、それ以外はキャンセル
+  var backFn;
+  if (p.draft_required) {
+    backFn = '_renderDraftConfirmStep_()';
+  } else {
+    var subHandles = STATE.creator.sub_handles;
+    if (typeof subHandles === 'string') subHandles = subHandles.split(',').map(function(h){ return h.trim(); }).filter(Boolean);
+    subHandles = subHandles || [];
+    backFn = subHandles.length > 0
+      ? '_renderAccountSelectStep_(findProduct(STATE._applyCtx.clientId,STATE._applyCtx.productId).product,(typeof STATE.creator.sub_handles===\'string\'?STATE.creator.sub_handles.split(\',\').map(function(h){return h.trim();}).filter(Boolean):STATE.creator.sub_handles||[]))'
+      : null;
+  }
+  var backBtn = backFn
+    ? '<button class="btn-secondary" style="margin-top:12px" onclick="' + backFn + '">← 戻る</button>'
+    : '<button class="btn-secondary" style="margin-top:12px" onclick="closeModal()">キャンセル</button>';
+  area.innerHTML =
+    '<div style="text-align:center;padding:4px 0 12px">'
+    +'<div style="font-size:28px;margin-bottom:10px">🎬</div>'
+    +'<div style="font-family:var(--fh);font-size:16px;font-weight:800;margin-bottom:6px">PR投稿の形式を教えてください</div>'
+    +'<div style="font-size:12px;color:var(--t3);margin-bottom:18px">この案件でどちらのPRを予定していますか？</div>'
+    +'</div>'
+    +'<div style="display:flex;flex-direction:column;gap:10px">'
+    +'<button onclick="_onPrFormatChoice_(\'動画投稿\')" style="width:100%;padding:16px;border-radius:14px;border:1.5px solid var(--bd);background:var(--bg);font-size:13px;font-weight:700;color:var(--t2);cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px">'
+    +'<span style="font-size:24px">📹</span>'
+    +'<div><div>動画投稿</div><div style="font-size:11px;font-weight:400;color:var(--t3);margin-top:2px">TikTokショート動画でPR</div></div>'
+    +'</button>'
+    +'<button onclick="_onPrFormatChoice_(\'LIVE\')" style="width:100%;padding:16px;border-radius:14px;border:1.5px solid var(--bd);background:var(--bg);font-size:13px;font-weight:700;color:var(--t2);cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px">'
+    +'<span style="font-size:24px">🔴</span>'
+    +'<div><div>LIVE配信</div><div style="font-size:11px;font-weight:400;color:var(--t3);margin-top:2px">TikTok LIVEでPR</div></div>'
+    +'</button>'
+    +'<button onclick="_onPrFormatChoice_(\'動画投稿・LIVE両方\')" style="width:100%;padding:16px;border-radius:14px;border:1.5px solid var(--bd);background:var(--bg);font-size:13px;font-weight:700;color:var(--t2);cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px">'
+    +'<span style="font-size:24px">✨</span>'
+    +'<div><div>両方予定</div><div style="font-size:11px;font-weight:400;color:var(--t3);margin-top:2px">動画投稿とLIVE配信どちらも</div></div>'
+    +'</button>'
+    +'</div>'
+    + backBtn;
+}
+
+function _onPrFormatChoice_(format) {
+  STATE._applyCtx.prFormat = format;
+  var found = findProduct(STATE._applyCtx.clientId, STATE._applyCtx.productId);
+  if (found) _renderSampleCheckStep_(found.product);
+}
+
+function _renderSampleCheckStep_(p) {
+  var area = document.getElementById('modalApplyArea');
+  if (!area) return;
+  area.innerHTML =
+    '<div style="text-align:center;padding:4px 0 8px">'
+    +'<div style="font-size:22px;margin-bottom:10px">📦</div>'
+    +'<div style="font-family:var(--fh);font-size:15px;font-weight:800;margin-bottom:6px">サンプルについて教えてください</div>'
+    +'<div style="font-size:12px;color:var(--t3);margin-bottom:18px">この商品のサンプルを<br>以前受け取ったことがありますか？</div>'
+    +'</div>'
+    +'<div style="display:flex;flex-direction:column;gap:10px">'
+    +'<button onclick="_onSampleReceived_(false)" style="width:100%;padding:14px;border-radius:14px;border:1.5px solid var(--bd);background:var(--bg);font-size:13px;font-weight:700;color:var(--t2);cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px">'
+    +'<span style="font-size:20px">📦</span><div><div>いいえ、まだ持っていません</div><div style="font-size:11px;font-weight:400;color:var(--t3)">サンプルをリクエストする</div></div></button>'
+    +'<button onclick="_onSampleReceived_(true)" style="width:100%;padding:14px;border-radius:14px;border:1.5px solid var(--bd);background:var(--bg);font-size:13px;font-weight:700;color:var(--t2);cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px">'
+    +'<span style="font-size:20px">✅</span><div><div>はい、すでに持っています</div><div style="font-size:11px;font-weight:400;color:var(--t3)">手元にサンプルがある</div></div></button>'
+    +'</div>'
+    +'<button class="btn-secondary" style="margin-top:12px" onclick="_renderPrFormatStep_(findProduct(STATE._applyCtx.clientId,STATE._applyCtx.productId).product)">← 戻る</button>';
+}
+
+function _onSampleReceived_(received) {
+  if (!STATE._applyCtx) return;
+  STATE._applyCtx.sampleReceived = received;
+  if (received) {
+    // 取得済み → サンプル不要フローへ。ステータスも即時反映
+    _submitWithSample_({ received: true, choice: 'already_have' });
+  } else {
+    // 未取得 → 選択肢があればStep2へ、なければそのまま送信
+    var found = findProduct(STATE._applyCtx.clientId, STATE._applyCtx.productId);
+    var opts = found && found.product.sample_options
+      ? found.product.sample_options.split(',').map(function(s){ return s.trim(); }).filter(Boolean)
+      : [];
+    if (opts.length) {
+      _renderSampleSelectStep_(opts);
+    } else {
+      _submitWithSample_({ received: false, choice: '' });
+    }
+  }
+}
+
+function _renderSampleSelectStep_(opts) {
+  var area = document.getElementById('modalApplyArea');
+  if (!area) return;
+  var btnHtml = opts.map(function(o) {
+    return '<button onclick="_onSampleChoice_(\''+esc(o)+'\')" style="width:100%;padding:13px 16px;border-radius:12px;border:1.5px solid var(--bd);background:var(--bg);font-size:13px;font-weight:700;color:var(--t2);cursor:pointer;text-align:left">'+esc(o)+'</button>';
+  }).join('');
+  area.innerHTML =
+    '<div style="text-align:center;padding:4px 0 8px">'
+    +'<div style="font-size:22px;margin-bottom:10px">📦</div>'
+    +'<div style="font-family:var(--fh);font-size:15px;font-weight:800;margin-bottom:6px">サンプルを選択してください</div>'
+    +'<div style="font-size:12px;color:var(--t3);margin-bottom:16px">ご希望のサンプルを1つ選んでください</div>'
+    +'</div>'
+    +'<div style="display:flex;flex-direction:column;gap:8px">'
+    +btnHtml
+    +'</div>'
+    +'<button onclick="_renderSampleCheckStep_(findProduct(STATE._applyCtx.clientId,STATE._applyCtx.productId).product)" class="btn-secondary" style="margin-top:12px">← 戻る</button>';
+}
+
+function _onSampleChoice_(choice) {
+  _submitWithSample_({ received: false, choice: choice });
+}
+
+function _submitWithSample_(sampleData) {
+  if (!STATE._applyCtx) return;
+  sampleData.prFormat = STATE._applyCtx.prFormat || '';
+  var area = document.getElementById('modalApplyArea');
+  if (area) area.innerHTML = '<div style="text-align:center;padding:24px 0"><div style="font-size:28px;margin-bottom:10px">⏳</div><div style="font-size:13px;color:var(--t3)">送信中...</div></div>';
+  gasCall({
+      action:'submitApp', token:STATE.token,
+      productId:STATE._applyCtx.productId,
+      sampleData:sampleData,
+      handle:STATE._applyCtx.applyHandle || ''
+    },
+    function(res) { if (res.error) { alert(res.error); return; } _renderApplyComplete_(res, sampleData); },
+    function(e) { alert(e.message); });
+}
+
+function _renderApplyComplete_(res, sampleData) {
+  var area = document.getElementById('modalApplyArea');
+  if (!area) return;
+  var isApproval = res.requires_approval;
+  var hadSample  = sampleData && sampleData.received;
+  var choiceMade = sampleData && sampleData.choice;
+  var prFormat   = sampleData && sampleData.prFormat;
+
+  area.innerHTML =
+    '<div style="text-align:center;padding:8px 0">'
+    +'<div style="font-size:48px;margin-bottom:14px">'+(isApproval?'✅':'🎉')+'</div>'
+    +'<div style="font-family:var(--fh);font-size:19px;font-weight:800;margin-bottom:10px">'
+    +(isApproval?'応募を受け付けました':'参加準備完了！')
+    +'</div>'
+    // メッセージ分岐
+    +(isApproval
+      // 審査あり
+      ? '<div style="font-size:13px;color:var(--t2);line-height:1.75;margin-bottom:14px">審査通過後、LINEにてTAPリンクをお送りします。</div>'
+      // 即参加
+      : '<div style="font-size:13px;color:var(--t2);line-height:1.75;margin-bottom:14px">TAPリンクをLINEでお送りしました。<br>確認してください。</div>'
+    )
+    // サンプル注釈
+    +'<div style="background:var(--bg);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;text-align:left;font-size:12px;color:var(--t2);line-height:1.7;margin-bottom:8px">'
+    +(hadSample
+      ? '📦 サンプルはお手元にあるとのこと、ありがとうございます。<br>手元にない場合はLINEにてその旨ご連絡ください。'
+      : (choiceMade
+          ? '📦 サンプル（'+esc(choiceMade)+'）を手配します。届き次第PR投稿をお願いします！'
+          : '📦 サンプルをお送りします。届き次第PR投稿をお願いします！'
+        )
+    )
+    +'</div>'
+    +(prFormat ? '<div style="background:var(--bg);border:1px solid var(--bd);border-radius:12px;padding:10px 14px;text-align:left;font-size:12px;color:var(--t2)">🎬 PR形式: <strong>'+esc(prFormat)+'</strong></div>' : '')
+    +'</div>'
+    +'<button class="btn-secondary" style="margin-top:16px" onclick="closeModal();_optimisticApplyUpdate_(STATE._applyCtx ? STATE._applyCtx.productId : null)">閉じる</button>';
+}
+
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+
+// ── Refresh ─────────────────────────────────────────────────
+
+function _optimisticApplyUpdate_(productId) {
+  if (productId && STATE.data) {
+    var existing = (STATE.data.applications || []).find(function(a){ return a.product_id === productId; });
+    if (!existing) {
+      if (!STATE.data.applications) STATE.data.applications = [];
+      var _sampleReceived = (STATE._applyCtx && STATE._applyCtx.sampleReceived) ? 'TRUE' : 'FALSE';
+      // STATE.data.listから商品情報を取得してrenderHistoryに必要なフィールドを全部埋める
+      var _found = STATE._applyCtx ? findProduct(STATE._applyCtx.clientId, productId) : null;
+      var _p = _found ? _found.product : {};
+      var _c = _found ? _found.client  : {};
+      STATE.data.applications.unshift({
+        application_id: 'tmp-' + Date.now(),
+        product_id:     productId,
+        product_name:   _p.product_name   || '',
+        client_name:    _c.client_name    || '',
+        image_url:      _p.image_url      || '',
+        affiliate_rate: _p.affiliate_rate || 0,
+        affiliate_url:  '',
+        status:         'pending',
+        applied_at:     new Date().toISOString().slice(0,10),
+        creator_id:     STATE.creator ? STATE.creator.creator_id : '',
+        sample_received: _sampleReceived,
+        draft_required:  _p.draft_required === true || _p.draft_required === 'TRUE',
+        pr_format:      STATE._applyCtx ? (STATE._applyCtx.prFormat || '') : '',
+      });
+    }
+    if (STATE.data.stats) { STATE.data.stats.total = (STATE.data.stats.total||0) + 1; STATE.data.stats.pending = (STATE.data.stats.pending||0) + 1; }
+  }
+  renderCatalog(); renderHistory(true); renderHome();
+  _clearCache();
+  // ローカル更新のみ。次のタブ切替時に自動で最新データ取得される
+}
+
+function refreshData() {
+  _clearCache(); // 応募・操作後は必ずキャッシュをクリア
+  gasCall({ action:'portalData', token:STATE.token },
+    function(res) {
+      if (res.error) return;
+      _saveCache(res); STATE.data = res; STATE.creator = res.creator; renderAll();
+    });
+}
+
+// ── Copy URL ─────────────────────────────────────────────────
+function toggleTopic(bodyId, headerEl) {
+  var body    = document.getElementById(bodyId);
+  var chevron = document.getElementById(bodyId + '-chevron');
+  if (!body) return;
+  var isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
+}
+
+function copyUrl(appId, url) {
+  navigator.clipboard.writeText(url).then(function() {
+    var btn = document.getElementById('cpbtn-' + appId);
+    if (btn) { btn.className='copy-btn copied'; btn.textContent='✓ コピー済み'; setTimeout(function(){ btn.className='copy-btn'; btn.textContent='コピー'; }, 2000); }
+  });
+}
+
+// ── Profile Edit Modal ──────────────────────────────────────
+var GENRE_OPTIONS = ['美容・コスメ','スキンケア','フード・ドリンク','ファッション','ガジェット・家電','ヘルスケア・サプリ','ライフスタイル・インテリア','旅行・アウトドア','ペット','育児・ベビー','スポーツ・フィットネス','教育・書籍','ゲーム・エンタメ','その他'];
+var STYLE_OPTIONS = [
+  { val:'レビュー系', icon:'⭐', desc:'商品の良し悪しを率直に' },
+  { val:'体験談系', icon:'💬', desc:'使ってみた体験を共有' },
+  { val:'ハウツー系', icon:'📖', desc:'使い方・活用法を解説' },
+  { val:'日常vlog系', icon:'📹', desc:'日常の中で自然に紹介' },
+  { val:'エンタメ系', icon:'🎭', desc:'エンタメ要素で楽しく' },
+  { val:'教育・解説系', icon:'🎓', desc:'知識・情報として伝える' },
+];
+
+function openEditProfile() {
+  var c = STATE.creator;
+  var currentGenres = (c.genres || c.categories || '').split(',').map(function(g){return g.trim();}).filter(Boolean);
+  var currentStyle  = c.posting_style || '';
+
+  var genreHtml = GENRE_OPTIONS.map(function(g) {
+    var sel = currentGenres.indexOf(g) >= 0 ? ' ep-selected' : '';
+    return '<button class="ep-genre-btn'+sel+'" data-val="'+g+'">'+g+'</button>';
+  }).join('');
+
+  var styleHtml = STYLE_OPTIONS.map(function(s) {
+    var sel = s.val === currentStyle ? ' ep-selected' : '';
+    return '<button class="ep-style-btn'+sel+'" data-val="'+s.val+'">'
+      +'<span>'+s.icon+'</span><span style="flex:1;text-align:left"><strong>'+s.val+'</strong>'
+      +'<span style="display:block;font-size:11px;font-weight:400;color:var(--t3)">'+s.desc+'</span></span>'
+      +'</button>';
+  }).join('');
+
+  var html = '<div id="epOverlay" onclick="if(event.target===this)closeEditProfile()" style="'
+    +'position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center">'
+    +'<div style="background:var(--s);border-radius:20px 20px 0 0;width:100%;max-width:430px;max-height:88vh;overflow-y:auto;padding:24px 20px 40px">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
+    +'<div style="font-family:var(--fh);font-size:17px;font-weight:800">プロフィール編集</div>'
+    +'<button onclick="closeEditProfile()" style="width:30px;height:30px;border-radius:50%;background:var(--bg);border:1px solid var(--bd);font-size:16px;color:var(--t2)">×</button>'
+    +'</div>'
+    +'<div style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.6px;margin-bottom:10px">得意ジャンル（最大3つ）</div>'
+    +'<div id="epGenreGrid" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">'+genreHtml+'</div>'
+    +'<div style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.6px;margin-bottom:10px">投稿スタイル</div>'
+    +'<div id="epStyleList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px">'+styleHtml+'</div>'
+    +'<div id="epErr" style="display:none;background:var(--redl);border:1px solid #fecaca;border-radius:10px;padding:10px 14px;font-size:12px;color:var(--red);margin-bottom:12px"></div>'
+    +'<button id="epSaveBtn" onclick="submitEditProfile()" style="width:100%;padding:14px;border-radius:12px;background:var(--tx);color:#fff;font-size:14px;font-weight:700;font-family:var(--fh)">保存する</button>'
+    +'</div></div>';
+
+  var el = document.createElement('div');
+  el.id = 'editProfileModal';
+  el.innerHTML = html;
+  document.body.appendChild(el);
+
+  // ジャンルボタンのトグル
+  document.getElementById('epGenreGrid').addEventListener('click', function(e) {
+    var btn = e.target.classList.contains('ep-genre-btn') ? e.target : e.target.closest('.ep-genre-btn');
+    if (!btn) return;
+    if (btn.classList.contains('ep-selected')) {
+      btn.classList.remove('ep-selected');
+    } else if (document.querySelectorAll('.ep-genre-btn.ep-selected').length < 3) {
+      btn.classList.add('ep-selected');
+    }
+  });
+
+  // スタイルボタンの排他選択
+  document.getElementById('epStyleList').addEventListener('click', function(e) {
+    var btn = e.target.classList.contains('ep-style-btn') ? e.target : e.target.closest('.ep-style-btn');
+    if (!btn) return;
+    document.querySelectorAll('.ep-style-btn').forEach(function(b) { b.classList.remove('ep-selected'); });
+    btn.classList.add('ep-selected');
+  });
+}
+
+function closeEditProfile() {
+  var el = document.getElementById('editProfileModal');
+  if (el) el.remove();
+}
+
+function submitEditProfile() {
+  var genres = [];
+  document.querySelectorAll('.ep-genre-btn.ep-selected').forEach(function(b) { genres.push(b.getAttribute('data-val')); });
+  var styleBtn = document.querySelector('.ep-style-btn.ep-selected');
+  var style = styleBtn ? styleBtn.getAttribute('data-val') : '';
+
+  var errEl = document.getElementById('epErr');
+  var saveBtn = document.getElementById('epSaveBtn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = '保存中...';
+  errEl.style.display = 'none';
+
+  gasCall({ action:'updateProfile', token:STATE.token, updates:{ genres:genres.join(','), categories:genres.join(','), posting_style:style } },
+    function(res) {
+      if (res.error) { errEl.textContent = res.error; errEl.style.display = 'block'; saveBtn.disabled = false; saveBtn.textContent = '保存する'; return; }
+      STATE.creator.genres = genres.join(',');
+      STATE.creator.categories = genres.join(',');
+      STATE.creator.posting_style = style;
+      closeEditProfile(); renderProfile();
+    },
+    function(e) { errEl.textContent = e.message; errEl.style.display = 'block'; saveBtn.disabled = false; saveBtn.textContent = '保存する'; });
+}
+
+// ── Logout ───────────────────────────────────────────────────
+function logout() {
+  // localStorageとsessionStorageをTCS関連キーごと全クリア
+  ['tcs_portal_token'].forEach(function(k) { storageRemove(k); });
+  // SESSION全クリア（古いlc_cache等の残滓対策）
+  try { sessionStorage.clear(); } catch(e) {}
+  STATE.token = null;
+  STATE.creator = null;
+  STATE.data = null;
+  STATE.pendingToken = null;
+  showScreen('loginScreen');
+  document.getElementById('loginBtn').textContent = 'LINEでログイン・新規登録';
+}
+
+function onErr(e) { alert('エラーが発生しました: ' + (e.message || e)); showScreen('loginScreen'); }
+
+// ── Boot ─────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', boot);
 </script>
 </body>
 </html>
