@@ -9,131 +9,26 @@
   <meta name="apple-mobile-web-app-title" content="TCS Portal">
   <meta name="theme-color" content="#f7f6f3">
   <title>TCS Creator Portal</title>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box;}
-    html,body{height:100%;width:100%;overflow:hidden;background:#f7f6f3;}
-
-    iframe{
-      border:none;width:100%;height:100%;display:block;
-      opacity:0;transition:opacity .45s ease;
-    }
-    iframe.visible{opacity:1;}
-
-    #loadScreen{
-      position:fixed;inset:0;z-index:9999;background:#f7f6f3;
-      display:flex;flex-direction:column;align-items:center;justify-content:center;
-      padding:48px 40px 60px;
-      transition:opacity .45s ease, visibility .45s ease;
-    }
-    #loadScreen.out{opacity:0;visibility:hidden;pointer-events:none;}
-
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .spin{
-      width:36px;height:36px;
-      border:3px solid #e8e6e0;border-top-color:#06C755;
-      border-radius:50%;animation:spin .8s linear infinite;
-      margin-bottom:28px;
-    }
-    .load-title{
-      font-family:'Plus Jakarta Sans',sans-serif;
-      font-size:20px;font-weight:800;color:#111018;
-      letter-spacing:-.4px;margin-bottom:8px;text-align:center;
-    }
-    .load-sub{
-      font-family:'Plus Jakarta Sans',sans-serif;
-      font-size:12px;color:#a09eb8;margin-bottom:36px;
-      text-align:center;line-height:1.8;
-    }
-    .ptrack{width:100%;max-width:240px;height:5px;background:#e8e6e0;border-radius:3px;overflow:hidden;margin-bottom:12px;}
-    .pfill{height:100%;width:0;border-radius:3px;background:linear-gradient(90deg,#06C755,#00e07a);box-shadow:0 0 8px rgba(6,199,85,.35);transition:width .5s ease;}
-    .load-foot{width:100%;max-width:240px;display:flex;align-items:center;justify-content:space-between;}
-    .load-brand{font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;color:#c8c6d8;font-weight:600;}
-    .load-pct{font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:800;color:#5a5870;min-width:40px;text-align:right;}
-  </style>
 </head>
 <body>
-  <div id="loadScreen">
-    <div class="spin"></div>
-    <div class="load-title">読み込み中...</div>
-    <div class="load-sub">初回は少し時間がかかります<br>そのままお待ちください</div>
-    <div class="ptrack"><div class="pfill" id="pfill"></div></div>
-    <div class="load-foot">
-      <div class="load-brand">TCS Creator Portal</div>
-      <div class="load-pct" id="pct">0%</div>
-    </div>
-  </div>
+<script>
+  var GAS_URL = 'https://script.google.com/macros/s/AKfycbxj_KePMzaGKAwJqq6HWO8L5ci68lSsvdglmHUnODv_-X6C9koO-Tg1akxLFZXnq1On/exec';
 
-  <iframe id="portal" src="about:blank" allow="same-origin"></iframe>
+  // LINEのOAuthコールバック (?code=...&state=...) も含めてそのままGASに転送
+  var search = window.location.search;
+  var targetUrl;
+  if (!search || search === '?') {
+    targetUrl = GAS_URL + '?page=creator';
+  } else if (search.indexOf('page=') !== -1) {
+    targetUrl = GAS_URL + search;
+  } else {
+    // ?code=xxx&state=xxx 等のOAuthコールバックパラメータをそのまま転送
+    targetUrl = GAS_URL + search;
+  }
 
-  <script>
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxj_KePMzaGKAwJqq6HWO8L5ci68lSsvdglmHUnODv_-X6C9koO-Tg1akxLFZXnq1On/exec';
-
-    var loadScr = document.getElementById('loadScreen');
-    var pfill   = document.getElementById('pfill');
-    var pctEl   = document.getElementById('pct');
-    var iframe  = document.getElementById('portal');
-    var done    = false;
-
-    // ── 疑似プログレス（徐々に上がって95%で止まる）──
-    var pctVal = 0;
-    var pctTimer = null;
-    function tickPct() {
-      if (done) return;
-      var step = pctVal < 40 ? 2.5 : pctVal < 70 ? 1.5 : pctVal < 88 ? 0.8 : 0.15;
-      pctVal = Math.min(95, pctVal + step);
-      pctEl.textContent = Math.floor(pctVal) + '%';
-      pfill.style.width = pctVal + '%';
-      if (pctVal < 95) {
-        var interval = pctVal < 40 ? 180 : pctVal < 70 ? 280 : 450;
-        pctTimer = setTimeout(tickPct, interval);
-      }
-    }
-
-    // ── ローディング終了 ──
-    function finishLoading() {
-      if (done) return;
-      done = true;
-      clearTimeout(pctTimer);
-      clearInterval(checker);
-      pctVal = 100;
-      pctEl.textContent = '100%';
-      pfill.style.width = '100%';
-      setTimeout(function() {
-        loadScr.classList.add('out');
-        iframe.classList.add('visible');
-      }, 350);
-    }
-
-    // ── contentWindow.length を定期チェック ──
-    // GASが正常ロードされるとGoogle内部のラッパーiframeが生成され length === 1 になる
-    // postMessageは二重iframeに傍受されるためこちらを使用
-    var checker = setInterval(function() {
-      try {
-        if (iframe.contentWindow && iframe.contentWindow.length >= 1) {
-          finishLoading();
-        }
-      } catch(e) {
-        // クロスオリジンエラーは無視
-      }
-    }, 300);
-
-    // ── フォールバック（30秒で強制終了）──
-    setTimeout(finishLoading, 30000);
-
-    // ── 読み込み開始 ──
-    tickPct();
-
-    var search = window.location.search;
-    var targetUrl;
-    if (!search || search === '?') {
-      targetUrl = GAS_URL + '?page=creator';
-    } else if (search.indexOf('page=') !== -1) {
-      targetUrl = GAS_URL + search;
-    } else {
-      targetUrl = GAS_URL + '?page=creator&' + search.slice(1);
-    }
-    iframe.src = targetUrl;
-  </script>
+  // iframeではなく直接リダイレクト
+  // GAS側のloadingScreenがそのまま表示される
+  window.location.replace(targetUrl);
+</script>
 </body>
 </html>
