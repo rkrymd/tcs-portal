@@ -14,27 +14,13 @@
     *{margin:0;padding:0;box-sizing:border-box;}
     html,body{height:100%;width:100%;overflow:hidden;background:#f7f6f3;}
 
-    /* ── iframe（最初は透明）── */
-    iframe{
-      border:none;width:100%;height:100%;display:block;
-      opacity:0;
-      transition:opacity .55s cubic-bezier(.4,0,.2,1);
-    }
-    iframe.visible{ opacity:1; }
-
-    /* ── ローディングオーバーレイ ── */
     #loadScreen{
       position:fixed;inset:0;z-index:9999;
       background:#f7f6f3;
       display:flex;flex-direction:column;align-items:center;justify-content:center;
       padding:48px 40px 60px;
-      transition:opacity .55s cubic-bezier(.4,0,.2,1), visibility .55s;
-    }
-    #loadScreen.out{
-      opacity:0;visibility:hidden;pointer-events:none;
     }
 
-    /* スピナー */
     @keyframes spin{to{transform:rotate(360deg)}}
     .spin{
       width:36px;height:36px;
@@ -46,7 +32,6 @@
       flex-shrink:0;
     }
 
-    /* テキスト */
     .load-title{
       font-family:'Plus Jakarta Sans',sans-serif;
       font-size:20px;font-weight:800;color:#111018;
@@ -58,7 +43,6 @@
       text-align:center;line-height:1.8;
     }
 
-    /* プログレスバー */
     .ptrack{
       width:100%;max-width:240px;height:5px;
       background:#e8e6e0;border-radius:3px;overflow:hidden;margin-bottom:12px;
@@ -77,9 +61,8 @@
       background:linear-gradient(90deg,#06C755,#00e07a);
       box-shadow:0 0 8px rgba(6,199,85,.35);
     }
-    .pfill.go{ animation:pfill 22s cubic-bezier(.4,0,.2,1) forwards; }
+    .pfill.go{ animation:pfill 3s cubic-bezier(.4,0,.2,1) forwards; }
 
-    /* フッター（サービス名 + %) */
     .load-foot{
       width:100%;max-width:240px;
       display:flex;align-items:center;justify-content:space-between;
@@ -96,7 +79,6 @@
 </head>
 <body>
 
-  <!-- ローディング画面 -->
   <div id="loadScreen">
     <div class="spin"></div>
     <div class="load-title">読み込み中...</div>
@@ -108,73 +90,39 @@
     </div>
   </div>
 
-  <!-- ポータル本体（裏で読み込み中）-->
-  <iframe id="portal" src="about:blank"></iframe>
-
   <script>
     var GAS_URL = 'https://script.google.com/macros/s/AKfycbxj_KePMzaGKAwJqq6HWO8L5ci68lSsvdglmHUnODv_-X6C9koO-Tg1akxLFZXnq1On/exec';
 
-    var iframe   = document.getElementById('portal');
-    var loadScr  = document.getElementById('loadScreen');
-    var pfill    = document.getElementById('pfill');
-    var pctEl    = document.getElementById('pct');
-    var done     = false;
+    var pfill = document.getElementById('pfill');
+    var pctEl = document.getElementById('pct');
 
-    // ── パーセント疑似カウント（GASコールドスタート想定で20秒想定）──
+    // パーセントカウントアップ（3秒で100%まで）
     var PCT_STEPS = [
-      [0,0],[400,8],[900,18],[1800,30],
-      [3000,42],[5000,55],[8000,68],[11000,78],
-      [14000,86],[16000,91],[18000,95],[19500,97]
+      [0,0],[300,20],[700,40],[1200,60],[1800,78],[2400,90],[2800,97]
     ];
-    function startPct() {
-      pfill.classList.add('go');
-      PCT_STEPS.forEach(function(s){
-        setTimeout(function(){ if(!done) pctEl.textContent = s[1]+'%'; }, s[0]);
-      });
-    }
-
-    // ── ローディング終了 ──
-    function finishLoading() {
-      if (done) return;
-      done = true;
-      pctEl.textContent = '100%';
-      setTimeout(function(){
-        loadScr.classList.add('out');
-        iframe.classList.add('visible');
-      }, 350);
-    }
-
-    // GASはリダイレクトが多くonloadが複数回発火するため
-    // 「about:blank以外のonload」を受けたら最低2秒待って終了
-    var _onloadFired = false;
-    iframe.addEventListener('load', function(){
-      if (iframe.src === 'about:blank' || iframe.src === '') return;
-      if (_onloadFired) {
-        // 2回目以降のonload = GASの実際のページ読み込み完了
-        var elapsed = Date.now() - startTime;
-        var wait = Math.max(0, 1500 - elapsed);
-        setTimeout(finishLoading, wait);
-      }
-      _onloadFired = true;
+    pfill.classList.add('go');
+    PCT_STEPS.forEach(function(s){
+      setTimeout(function(){ pctEl.textContent = s[1]+'%'; }, s[0]);
     });
 
-    // タイムアウト保険（25秒で強制終了）
-    setTimeout(finishLoading, 25000);
+    // 3秒後に直接遷移（iframeではなくwindow.location）
+    setTimeout(function(){
+      pctEl.textContent = '100%';
 
-    // ── iframe 読み込み開始 ──
-    var startTime = Date.now();
-    startPct();
+      var search = window.location.search;
+      var targetUrl;
+      if (!search || search === '?') {
+        targetUrl = GAS_URL + '?page=creator';
+      } else if (search.indexOf('page=') !== -1) {
+        targetUrl = GAS_URL + search;
+      } else {
+        targetUrl = GAS_URL + '?page=creator&' + search.slice(1);
+      }
 
-    var search = window.location.search;
-    var targetUrl;
-    if (!search || search === '?') {
-      targetUrl = GAS_URL + '?page=creator';
-    } else if (search.indexOf('page=') !== -1) {
-      targetUrl = GAS_URL + search;
-    } else {
-      targetUrl = GAS_URL + '?page=creator&' + search.slice(1);
-    }
-    iframe.src = targetUrl;
+      // iframeではなく直接遷移 → X-Frame-Optionsエラー完全回避
+      window.location.href = targetUrl;
+    }, 3000);
   </script>
+
 </body>
 </html>
