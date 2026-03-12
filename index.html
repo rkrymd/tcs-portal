@@ -14,39 +14,28 @@
     *{margin:0;padding:0;box-sizing:border-box;}
     html,body{height:100%;width:100%;overflow:hidden;background:#f7f6f3;}
 
-    /* ── iframe（最初は透明）── */
     iframe{
       border:none;width:100%;height:100%;display:block;
-      opacity:0;
-      transition:opacity .55s cubic-bezier(.4,0,.2,1);
+      opacity:0;transition:opacity .5s ease;
     }
-    iframe.visible{ opacity:1; }
+    iframe.visible{opacity:1;}
 
-    /* ── ローディングオーバーレイ ── */
     #loadScreen{
       position:fixed;inset:0;z-index:9999;
       background:#f7f6f3;
       display:flex;flex-direction:column;align-items:center;justify-content:center;
       padding:48px 40px 60px;
-      transition:opacity .55s cubic-bezier(.4,0,.2,1), visibility .55s;
+      transition:opacity .5s ease, visibility .5s ease;
     }
-    #loadScreen.out{
-      opacity:0;visibility:hidden;pointer-events:none;
-    }
+    #loadScreen.out{opacity:0;visibility:hidden;pointer-events:none;}
 
-    /* スピナー */
     @keyframes spin{to{transform:rotate(360deg)}}
     .spin{
       width:36px;height:36px;
-      border:3px solid #e8e6e0;
-      border-top-color:#06C755;
-      border-radius:50%;
-      animation:spin .8s linear infinite;
+      border:3px solid #e8e6e0;border-top-color:#06C755;
+      border-radius:50%;animation:spin .8s linear infinite;
       margin-bottom:28px;
-      flex-shrink:0;
     }
-
-    /* テキスト */
     .load-title{
       font-family:'Plus Jakarta Sans',sans-serif;
       font-size:20px;font-weight:800;color:#111018;
@@ -57,45 +46,14 @@
       font-size:12px;color:#a09eb8;margin-bottom:36px;
       text-align:center;line-height:1.8;
     }
-
-    /* プログレスバー */
-    .ptrack{
-      width:100%;max-width:240px;height:5px;
-      background:#e8e6e0;border-radius:3px;overflow:hidden;margin-bottom:12px;
-    }
-    @keyframes pfill{
-      0%  {width:0%}
-      40% {width:55%}
-      70% {width:78%}
-      88% {width:90%}
-      95% {width:96%}
-      100%{width:100%}
-    }
-    .pfill{
-      height:100%;width:0;border-radius:3px;
-      background:linear-gradient(90deg,#06C755,#00e07a);
-      box-shadow:0 0 8px rgba(6,199,85,.35);
-    }
-    .pfill.go{ animation:pfill 4.5s cubic-bezier(.4,0,.6,1) forwards; }
-
-    /* フッター（サービス名 + %) */
-    .load-foot{
-      width:100%;max-width:240px;
-      display:flex;align-items:center;justify-content:space-between;
-    }
-    .load-brand{
-      font-family:'Plus Jakarta Sans',sans-serif;
-      font-size:11px;color:#c8c6d8;font-weight:600;letter-spacing:.3px;
-    }
-    .load-pct{
-      font-family:'Plus Jakarta Sans',sans-serif;
-      font-size:14px;font-weight:800;color:#5a5870;min-width:40px;text-align:right;
-    }
+    .ptrack{width:100%;max-width:240px;height:5px;background:#e8e6e0;border-radius:3px;overflow:hidden;margin-bottom:12px;}
+    .pfill{height:100%;width:0;border-radius:3px;background:linear-gradient(90deg,#06C755,#00e07a);box-shadow:0 0 8px rgba(6,199,85,.35);transition:width .6s ease;}
+    .load-foot{width:100%;max-width:240px;display:flex;align-items:center;justify-content:space-between;}
+    .load-brand{font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;color:#c8c6d8;font-weight:600;}
+    .load-pct{font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:800;color:#5a5870;min-width:40px;text-align:right;}
   </style>
 </head>
 <body>
-
-  <!-- ローディング画面 -->
   <div id="loadScreen">
     <div class="spin"></div>
     <div class="load-title">読み込み中...</div>
@@ -107,59 +65,56 @@
     </div>
   </div>
 
-  <!-- ポータル本体（裏で読み込み中）-->
   <iframe id="portal" src="about:blank"></iframe>
 
   <script>
     var GAS_URL = 'https://script.google.com/macros/s/AKfycbxj_KePMzaGKAwJqq6HWO8L5ci68lSsvdglmHUnODv_-X6C9koO-Tg1akxLFZXnq1On/exec';
 
-    var iframe   = document.getElementById('portal');
-    var loadScr  = document.getElementById('loadScreen');
-    var pfill    = document.getElementById('pfill');
-    var pctEl    = document.getElementById('pct');
-    var done     = false;
+    var loadScr = document.getElementById('loadScreen');
+    var pfill   = document.getElementById('pfill');
+    var pctEl   = document.getElementById('pct');
+    var iframe  = document.getElementById('portal');
+    var done    = false;
 
-    // ── パーセント疑似カウント ──
-    var PCT_STEPS = [
-      [0,0],[300,10],[700,22],[1200,38],
-      [1800,52],[2500,65],[3200,76],[3800,85],
-      [4200,91],[4500,95],[4700,97]
-    ];
-    function startPct() {
-      pfill.classList.add('go');
-      PCT_STEPS.forEach(function(s){
-        setTimeout(function(){ if(!done) pctEl.textContent = s[1]+'%'; }, s[0]);
-      });
+    // ── %カウント（疑似プログレス）──
+    var pctTimer = null;
+    var pctVal   = 0;
+    function tickPct() {
+      // 97%まで徐々に増加、そこで止まる
+      var target = 97;
+      var speed  = pctVal < 30 ? 3 : pctVal < 60 ? 2 : pctVal < 85 ? 1 : 0.3;
+      pctVal = Math.min(target, pctVal + speed);
+      pctEl.textContent = Math.floor(pctVal) + '%';
+      pfill.style.width = pctVal + '%';
+      if (!done) pctTimer = setTimeout(tickPct, pctVal < 30 ? 200 : pctVal < 70 ? 350 : 600);
     }
 
     // ── ローディング終了 ──
     function finishLoading() {
       if (done) return;
       done = true;
+      clearTimeout(pctTimer);
+      pctVal = 100;
       pctEl.textContent = '100%';
-      // 少し余韻を持たせてからフェード
+      pfill.style.width = '100%';
       setTimeout(function(){
         loadScr.classList.add('out');
         iframe.classList.add('visible');
-      }, 350);
+      }, 400);
     }
 
-    // iframe onload で終了
-    iframe.addEventListener('load', function(){
-      // about:blank の初回loadは無視
-      if (iframe.src === 'about:blank' || iframe.src === '') return;
-      // 最低1秒は表示（ちらつき防止）
-      var elapsed = Date.now() - startTime;
-      var wait = Math.max(0, 1000 - elapsed);
-      setTimeout(finishLoading, wait);
+    // ── GAS側からpostMessageで完了通知を受け取る（最も確実）──
+    window.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'tcs_portal_ready') {
+        finishLoading();
+      }
     });
 
-    // タイムアウト保険（8秒で強制終了）
-    setTimeout(finishLoading, 8000);
+    // ── フォールバック: 30秒で強制終了 ──
+    setTimeout(finishLoading, 30000);
 
-    // ── iframe 読み込み開始 ──
-    var startTime = Date.now();
-    startPct();
+    // ── iframe読み込み開始 ──
+    tickPct();
 
     var search = window.location.search;
     var targetUrl;
