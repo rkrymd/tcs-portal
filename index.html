@@ -175,17 +175,18 @@
       targetUrl = GAS_URL + '?page=creator&' + search.slice(1);
     }
 
-    // quick_actionは専用ローディング表示（処理中スピナー）
+    // quick_actionは処理中スピナーを表示して即iframeを見せる
     var isQuickAction = search.indexOf('page=quick_action') !== -1;
     if (isQuickAction) {
-      loadScr.innerHTML = ''
-        + '<div style="display:flex;flex-direction:column;align-items:center;gap:20px">'
-        + '<div style="width:48px;height:48px;border:3px solid #e8e6e0;border-top-color:#06C755;border-radius:50%;animation:spin .8s linear infinite"></div>'
-        + '<div style="font-size:16px;font-weight:700;color:#111018">処理中...</div>'
-        + '<div style="font-size:12px;color:#a09eb8;text-align:center;line-height:1.8">そのままお待ちください</div>'
-        + '</div>';
-      // quick_actionはGASが結果ページを1回だけ返す → 最初のloadで即finishLoading
-      _onloadFired = true; // 通常の2回待ち判定をスキップ
+      // プログレスバーを隠してシンプルなスピナーに切り替え
+      var ptrackEl = document.querySelector('.ptrack');
+      var pfootEl  = document.querySelector('.load-foot');
+      var titleEl  = document.querySelector('.load-title');
+      var subEl    = document.querySelector('.load-sub');
+      if (titleEl) titleEl.textContent = '処理中...';
+      if (subEl)   subEl.textContent   = 'そのままお待ちください';
+      if (ptrackEl) ptrackEl.style.display = 'none';
+      if (pfootEl)  pfootEl.style.display  = 'none';
     }
 
     iframe.src = targetUrl;
