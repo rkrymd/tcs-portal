@@ -233,24 +233,44 @@
     // ── LINE認証コールバック: GitHub Pages側でGAS APIを直接呼んでトークン取得 ──
     var codeMatch = search.match(/[?&]code=([^&]+)/);
     var isCallback = search.indexOf('page=creator_callback') !== -1 && codeMatch;
-    if (!_handled && isCallback) {
+    var _alreadyTried = false;
+    try { _alreadyTried = sessionStorage.getItem('_tcs_fetch_tried') === '1'; } catch(e) {}
+    if (!_handled && isCallback && !_alreadyTried) {
+      try { sessionStorage.setItem('_tcs_fetch_tried', '1'); } catch(e) {}
       var stateMatch = search.match(/[?&]state=([^&]+)/);
       var apiUrl = GAS_URL + '?page=line_auth_api&code=' + codeMatch[1] + (stateMatch ? '&state=' + stateMatch[1] : '');
+      var _fetchDone = false;
+      // 8秒タイムアウト: 間に合わなければiframeで従来処理
+      var _fetchTimeout = setTimeout(function() {
+        if (_fetchDone) return;
+        _fetchDone = true;
+        try { sessionStorage.removeItem('_tcs_fetch_tried'); } catch(e) {}
+        window.location.replace(window.location.pathname);
+      }, 8000);
       fetch(apiUrl)
         .then(function(r) { return r.json(); })
         .then(function(res) {
+          if (_fetchDone) return;
+          _fetchDone = true;
+          clearTimeout(_fetchTimeout);
           if (res.portal_token) {
             localStorage.setItem(TOKEN_KEY, JSON.stringify({ token: res.portal_token, ts: Date.now() }));
           }
-          // トークン保存後、通常のポータル読み込みへ（コールバックパラメータはiframeにも渡す）
+          try { sessionStorage.removeItem('_tcs_fetch_tried'); } catch(e) {}
           window.location.replace(window.location.pathname);
         })
         .catch(function() {
-          // API呼び出し失敗: 従来通りiframeで処理（フォールバック）
-          window.location.replace(window.location.pathname + '?' + search.slice(1));
+          if (_fetchDone) return;
+          _fetchDone = true;
+          clearTimeout(_fetchTimeout);
+          try { sessionStorage.removeItem('_tcs_fetch_tried'); } catch(e) {}
+          // fetch失敗: トークン保存なしで通常読み込み（iframeが従来通り処理）
+          window.location.replace(window.location.pathname);
         });
       _handled = true;
     }
+    // フラグリセット（コールバック以外のアクセス時）
+    if (!isCallback) { try { sessionStorage.removeItem('_tcs_fetch_tried'); } catch(e) {} }
 
     if (_handled) { /* リダイレクト中なのでiframe読み込みしない */ }
     else {
