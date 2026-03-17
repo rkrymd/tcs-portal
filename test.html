@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TCS Portal">
+  <meta name="theme-color" content="#f7f6f3">
+  <title>TCS Creator Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    html,body{height:100%;width:100%;overflow:hidden;background:#f7f6f3;}
+
+    /* ── iframe（最初は透明）── */
+    iframe{
+      border:none;width:100%;height:100%;display:block;
+      opacity:0;
+      transition:opacity .55s cubic-bezier(.4,0,.2,1);
+    }
+    iframe.visible{ opacity:1; }
+
+    /* ── ローディングオーバーレイ ── */
+    #loadScreen{
+      position:fixed;inset:0;z-index:9999;
+      background:#f7f6f3;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      padding:48px 40px 60px;
+      transition:opacity .55s cubic-bezier(.4,0,.2,1), visibility .55s;
+    }
+    #loadScreen.out{
+      opacity:0;visibility:hidden;pointer-events:none;
+    }
+
+    /* スピナー */
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .spin{
+      width:36px;height:36px;
+      border:3px solid #e8e6e0;
+      border-top-color:#06C755;
+      border-radius:50%;
+      animation:spin .8s linear infinite;
+      margin-bottom:28px;
+      flex-shrink:0;
+    }
+
+    /* テキスト */
+    .load-title{
+      font-family:'Plus Jakarta Sans',sans-serif;
+      font-size:20px;font-weight:800;color:#111018;
+      letter-spacing:-.4px;margin-bottom:8px;text-align:center;
+    }
+    .load-sub{
+      font-family:'Plus Jakarta Sans',sans-serif;
+      font-size:12px;color:#a09eb8;margin-bottom:36px;
+      text-align:center;line-height:1.8;
+    }
+
+    /* プログレスバー */
+    .ptrack{
+      width:100%;max-width:240px;height:5px;
+      background:#e8e6e0;border-radius:3px;overflow:hidden;margin-bottom:12px;
+    }
+    @keyframes pfill{
+      0%  {width:0%}
+      25% {width:40%}
+      50% {width:62%}
+      72% {width:78%}
+      88% {width:90%}
+      95% {width:96%}
+      100%{width:100%}
+    }
+    .pfill{
+      height:100%;width:0;border-radius:3px;
+      background:linear-gradient(90deg,#06C755,#00e07a);
+      box-shadow:0 0 8px rgba(6,199,85,.35);
+    }
+    .pfill.go{ animation:pfill 22s cubic-bezier(.4,0,.2,1) forwards; }
+
+    /* フッター（サービス名 + %) */
+    .load-foot{
+      width:100%;max-width:240px;
+      display:flex;align-items:center;justify-content:space-between;
+    }
+    .load-brand{
+      font-family:'Plus Jakarta Sans',sans-serif;
+      font-size:11px;color:#c8c6d8;font-weight:600;letter-spacing:.3px;
+    }
+    .load-pct{
+      font-family:'Plus Jakarta Sans',sans-serif;
+      font-size:14px;font-weight:800;color:#5a5870;min-width:40px;text-align:right;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ローディング画面 -->
+  <div id="loadScreen">
+    <div class="spin"></div>
+    <div class="load-title">読み込み中...</div>
+    <div class="load-sub">初回は少し時間がかかります<br>そのままお待ちください</div>
+    <div class="ptrack"><div class="pfill" id="pfill"></div></div>
+    <div class="load-foot">
+      <div class="load-brand">TCS Creator Portal</div>
+      <div class="load-pct" id="pct">0%</div>
+    </div>
+  </div>
+
+  <!-- ポータル本体（裏で読み込み中）-->
+  <iframe id="portal" src="about:blank"></iframe>
+
+  <script>
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxKSdzmiTpI_6jHgk0IaM7aXoNNW5KcSYUAAbWHkl9tC9fen3s91HA4GDFyUjd0QsAf/exec';
+
+    var iframe   = document.getElementById('portal');
+    var loadScr  = document.getElementById('loadScreen');
+    var pfill    = document.getElementById('pfill');
+    var pctEl    = document.getElementById('pct');
+    var done     = false;
+
+    // ── 親ページのlocalStorageでトークン+キャッシュを永続管理 ──
+    var TOKEN_KEY = 'tcs_parent_token';
+    var CACHE_KEY = 'tcs_parent_cache';
+    var TOKEN_TTL = 30 * 24 * 60 * 60 * 1000; // 30日
+
+    function _parentGetToken() {
+      try {
+        var raw = localStorage.getItem(TOKEN_KEY);
+        if (!raw) return null;
+        var obj = JSON.parse(raw);
+        if (Date.now() - obj.ts > TOKEN_TTL) { localStorage.removeItem(TOKEN_KEY); return null; }
+        return obj.token;
+      } catch(e) { return null; }
+    }
+
+    // iframe（GAS）からのpostMessageを受信
+    window.addEventListener('message', function(e) {
+      // GAS iframeからのメッセージのみ処理
+      if (!e.data || !e.data.tcs) return;
+      try {
+        if (e.data.tcs === 'saveToken') {
+          localStorage.setItem(TOKEN_KEY, JSON.stringify({ token: e.data.token, ts: Date.now() }));
+        } else if (e.data.tcs === 'clearToken') {
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem(CACHE_KEY);
+        } else if (e.data.tcs === 'saveCache') {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: e.data.cache }));
+        } else if (e.data.tcs === 'clearCache') {
+          localStorage.removeItem(CACHE_KEY);
+        } else if (e.data.tcs === 'getToken') {
+          // iframeにトークンとキャッシュを返す
+          var token = _parentGetToken();
+          var cache = null;
+          try {
+            var cRaw = localStorage.getItem(CACHE_KEY);
+            if (cRaw) {
+              var cObj = JSON.parse(cRaw);
+              if (Date.now() - cObj.ts < 30 * 60 * 1000) cache = cObj.data;
+              else localStorage.removeItem(CACHE_KEY);
+            }
+          } catch(ex) {}
+          iframe.contentWindow.postMessage({ tcs: 'tokenResponse', token: token, cache: cache }, '*');
+        }
+      } catch(ex) {}
+    });
+
+    // ── パーセント疑似カウント（GASコールドスタート想定で20秒想定）──
+    var PCT_STEPS = [
+      [0,0],[400,8],[900,18],[1800,30],
+      [3000,42],[5000,55],[8000,68],[11000,78],
+      [14000,86],[16000,91],[18000,95],[19500,97]
+    ];
+    function startPct() {
+      pfill.classList.add('go');
+      PCT_STEPS.forEach(function(s){
+        setTimeout(function(){ if(!done) pctEl.textContent = s[1]+'%'; }, s[0]);
+      });
+    }
+
+    // ── ローディング終了 ──
+    function finishLoading() {
+      if (done) return;
+      done = true;
+      pctEl.textContent = '100%';
+      setTimeout(function(){
+        loadScr.classList.add('out');
+        iframe.classList.add('visible');
+      }, 350);
+    }
+
+    // GASはリダイレクトが多くonloadが複数回発火するため
+    // 「about:blank以外のonload」を受けたら最低2秒待って終了
+    var _onloadFired = false;
+    iframe.addEventListener('load', function(){
+      if (iframe.src === 'about:blank' || iframe.src === '') return;
+      if (_onloadFired) {
+        // 2回目以降のonload = GASの実際のページ読み込み完了
+        var elapsed = Date.now() - startTime;
+        var wait = Math.max(0, 1500 - elapsed);
+        setTimeout(finishLoading, wait);
+      }
+      _onloadFired = true;
+    });
+
+    // タイムアウト保険（25秒で強制終了）
+    setTimeout(finishLoading, 25000);
+
+    // ── iframe 読み込み開始 ──
+    var startTime = Date.now();
+    startPct();
+
+    var search = window.location.search;
+    var targetUrl;
+    if (!search || search === '?') {
+      targetUrl = GAS_URL + '?page=creator';
+    } else if (search.indexOf('page=') !== -1) {
+      targetUrl = GAS_URL + search;
+    } else {
+      targetUrl = GAS_URL + '?page=creator&' + search.slice(1);
+    }
+    // 保存済みトークンがあればURLに付与（iframe内localStorageがブロックされる環境用）
+    var savedToken = _parentGetToken();
+    if (savedToken && targetUrl.indexOf('pt=') === -1) {
+      targetUrl += (targetUrl.indexOf('?') >= 0 ? '&' : '?') + 'pt=' + encodeURIComponent(savedToken);
+    }
+
+    // quick_actionは処理中スピナーを表示して即iframeを見せる
+    var isQuickAction = search.indexOf('page=quick_action') !== -1;
+    if (isQuickAction) {
+      // プログレスバーを隠してシンプルなスピナーに切り替え
+      var ptrackEl = document.querySelector('.ptrack');
+      var pfootEl  = document.querySelector('.load-foot');
+      var titleEl  = document.querySelector('.load-title');
+      var subEl    = document.querySelector('.load-sub');
+      if (titleEl) titleEl.textContent = '処理中...';
+      if (subEl)   subEl.textContent   = 'そのままお待ちください';
+      if (ptrackEl) ptrackEl.style.display = 'none';
+      if (pfootEl)  pfootEl.style.display  = 'none';
+    }
+
+    iframe.src = targetUrl;
+  </script>
+</body>
+</html>
