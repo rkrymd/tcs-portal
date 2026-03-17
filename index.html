@@ -120,6 +120,52 @@
     var pctEl    = document.getElementById('pct');
     var done     = false;
 
+    // ── 親ページのlocalStorageでトークン+キャッシュを永続管理 ──
+    var TOKEN_KEY = 'tcs_parent_token';
+    var CACHE_KEY = 'tcs_parent_cache';
+    var TOKEN_TTL = 30 * 24 * 60 * 60 * 1000; // 30日
+
+    function _parentGetToken() {
+      try {
+        var raw = localStorage.getItem(TOKEN_KEY);
+        if (!raw) return null;
+        var obj = JSON.parse(raw);
+        if (Date.now() - obj.ts > TOKEN_TTL) { localStorage.removeItem(TOKEN_KEY); return null; }
+        return obj.token;
+      } catch(e) { return null; }
+    }
+
+    // iframe（GAS）からのpostMessageを受信
+    window.addEventListener('message', function(e) {
+      // GAS iframeからのメッセージのみ処理
+      if (!e.data || !e.data.tcs) return;
+      try {
+        if (e.data.tcs === 'saveToken') {
+          localStorage.setItem(TOKEN_KEY, JSON.stringify({ token: e.data.token, ts: Date.now() }));
+        } else if (e.data.tcs === 'clearToken') {
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem(CACHE_KEY);
+        } else if (e.data.tcs === 'saveCache') {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: e.data.cache }));
+        } else if (e.data.tcs === 'clearCache') {
+          localStorage.removeItem(CACHE_KEY);
+        } else if (e.data.tcs === 'getToken') {
+          // iframeにトークンとキャッシュを返す
+          var token = _parentGetToken();
+          var cache = null;
+          try {
+            var cRaw = localStorage.getItem(CACHE_KEY);
+            if (cRaw) {
+              var cObj = JSON.parse(cRaw);
+              if (Date.now() - cObj.ts < 30 * 60 * 1000) cache = cObj.data;
+              else localStorage.removeItem(CACHE_KEY);
+            }
+          } catch(ex) {}
+          iframe.contentWindow.postMessage({ tcs: 'tokenResponse', token: token, cache: cache }, '*');
+        }
+      } catch(ex) {}
+    });
+
     // ── パーセント疑似カウント（GASコールドスタート想定で20秒想定）──
     var PCT_STEPS = [
       [0,0],[400,8],[900,18],[1800,30],
@@ -173,6 +219,11 @@
       targetUrl = GAS_URL + search;
     } else {
       targetUrl = GAS_URL + '?page=creator&' + search.slice(1);
+    }
+    // 保存済みトークンがあればURLに付与（iframe内localStorageがブロックされる環境用）
+    var savedToken = _parentGetToken();
+    if (savedToken && targetUrl.indexOf('pt=') === -1) {
+      targetUrl += (targetUrl.indexOf('?') >= 0 ? '&' : '?') + 'pt=' + encodeURIComponent(savedToken);
     }
 
     // quick_actionは処理中スピナーを表示して即iframeを見せる
