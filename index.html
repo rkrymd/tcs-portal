@@ -124,15 +124,22 @@
     var TOKEN_KEY = 'tcs_parent_token';
     var CACHE_KEY = 'tcs_parent_cache';
     var TOKEN_TTL = 30 * 24 * 60 * 60 * 1000; // 30日
+    var _memoryToken = null; // localStorage使えない環境用のメモリ内バックアップ
 
     function _parentGetToken() {
       try {
         var raw = localStorage.getItem(TOKEN_KEY);
-        if (!raw) return null;
-        var obj = JSON.parse(raw);
-        if (Date.now() - obj.ts > TOKEN_TTL) { localStorage.removeItem(TOKEN_KEY); return null; }
-        return obj.token;
-      } catch(e) { return null; }
+        if (raw) {
+          var obj = JSON.parse(raw);
+          if (Date.now() - obj.ts > TOKEN_TTL) { localStorage.removeItem(TOKEN_KEY); }
+          else return obj.token;
+        }
+      } catch(e) {}
+      return _memoryToken || null;
+    }
+    function _parentSaveToken(token) {
+      _memoryToken = token; // 常にメモリにも保持
+      try { localStorage.setItem(TOKEN_KEY, JSON.stringify({ token: token, ts: Date.now() })); } catch(e) {}
     }
 
     // iframe（GAS）からのpostMessageを受信
@@ -141,7 +148,7 @@
       if (!e.data || !e.data.tcs) return;
       try {
         if (e.data.tcs === 'saveToken') {
-          localStorage.setItem(TOKEN_KEY, JSON.stringify({ token: e.data.token, ts: Date.now() }));
+          _parentSaveToken(e.data.token);
         } else if (e.data.tcs === 'clearToken') {
           localStorage.removeItem(TOKEN_KEY);
           localStorage.removeItem(CACHE_KEY);
@@ -218,9 +225,12 @@
     var _handled = false;
     if (tkMatch) {
       var newToken = decodeURIComponent(tkMatch[1]);
-      localStorage.setItem(TOKEN_KEY, JSON.stringify({ token: newToken, ts: Date.now() }));
-      window.location.replace(window.location.pathname);
-      _handled = true;
+      _parentSaveToken(newToken);
+      // localStorageに保存できた場合のみクリーンURLにリダイレクト
+      // 保存できない場合は_memoryTokenに残っているのでそのまま進む
+      var stored = false;
+      try { stored = !!localStorage.getItem(TOKEN_KEY); } catch(e) {}
+      if (stored) { window.location.replace(window.location.pathname); _handled = true; }
     }
     // ── _clear パラメータ: ログアウト時にトークンをクリア ──
     if (!_handled && search.indexOf('_clear=1') !== -1) {
@@ -245,7 +255,7 @@
         if (_fetchDone) return;
         _fetchDone = true;
         try { sessionStorage.removeItem('_tcs_fetch_tried'); } catch(e) {}
-        window.location.replace(window.location.pathname);
+        _loadIframe(null);
       }, 8000);
       fetch(apiUrl)
         .then(function(r) { return r.json(); })
@@ -254,57 +264,65 @@
           _fetchDone = true;
           clearTimeout(_fetchTimeout);
           if (res.portal_token) {
-            localStorage.setItem(TOKEN_KEY, JSON.stringify({ token: res.portal_token, ts: Date.now() }));
+            _parentSaveToken(res.portal_token);
           }
           try { sessionStorage.removeItem('_tcs_fetch_tried'); } catch(e) {}
-          window.location.replace(window.location.pathname);
+          // localStorage保存が確認できればクリーンURLにリダイレクト
+          // 保存できない環境（LINEブラウザ等）はリダイレクトせず直接iframe読み込み
+          var lsOk = false;
+          try { lsOk = !!localStorage.getItem(TOKEN_KEY); } catch(e) {}
+          if (lsOk) {
+            window.location.replace(window.location.pathname);
+          } else {
+            _loadIframe(res.portal_token);
+          }
         })
         .catch(function() {
           if (_fetchDone) return;
           _fetchDone = true;
           clearTimeout(_fetchTimeout);
           try { sessionStorage.removeItem('_tcs_fetch_tried'); } catch(e) {}
-          // fetch失敗: トークン保存なしで通常読み込み（iframeが従来通り処理）
-          window.location.replace(window.location.pathname);
+          // fetch失敗: iframeで従来処理（code/stateをiframe内GASに渡す）
+          _loadIframe(null);
         });
       _handled = true;
     }
     // フラグリセット（コールバック以外のアクセス時）
     if (!isCallback) { try { sessionStorage.removeItem('_tcs_fetch_tried'); } catch(e) {} }
 
-    if (_handled) { /* リダイレクト中なのでiframe読み込みしない */ }
-    else {
+    // ── iframe読み込み関数（コールバック後・通常アクセス共通）──
+    function _loadIframe(tokenOverride) {
+      var targetUrl;
+      if (!search || search === '?' || search.indexOf('page=creator_callback') !== -1) {
+        targetUrl = GAS_URL + '?page=creator';
+      } else if (search.indexOf('page=') !== -1) {
+        targetUrl = GAS_URL + search;
+      } else {
+        targetUrl = GAS_URL + '?page=creator&' + search.slice(1);
+      }
+      // トークンをURLに付与（iframe内localStorageがブロックされる環境用）
+      var tk = tokenOverride || _parentGetToken();
+      if (tk && targetUrl.indexOf('pt=') === -1) {
+        targetUrl += (targetUrl.indexOf('?') >= 0 ? '&' : '?') + 'pt=' + encodeURIComponent(tk);
+      }
 
-    var targetUrl;
-    if (!search || search === '?') {
-      targetUrl = GAS_URL + '?page=creator';
-    } else if (search.indexOf('page=') !== -1) {
-      targetUrl = GAS_URL + search;
-    } else {
-      targetUrl = GAS_URL + '?page=creator&' + search.slice(1);
-    }
-    // 保存済みトークンがあればURLに付与（iframe内localStorageがブロックされる環境用）
-    var savedToken = _parentGetToken();
-    if (savedToken && targetUrl.indexOf('pt=') === -1) {
-      targetUrl += (targetUrl.indexOf('?') >= 0 ? '&' : '?') + 'pt=' + encodeURIComponent(savedToken);
+      // quick_actionは処理中スピナーを表示して即iframeを見せる
+      var isQuickAction = search.indexOf('page=quick_action') !== -1;
+      if (isQuickAction) {
+        var ptrackEl = document.querySelector('.ptrack');
+        var pfootEl  = document.querySelector('.load-foot');
+        var titleEl  = document.querySelector('.load-title');
+        var subEl    = document.querySelector('.load-sub');
+        if (titleEl) titleEl.textContent = '処理中...';
+        if (subEl)   subEl.textContent   = 'そのままお待ちください';
+        if (ptrackEl) ptrackEl.style.display = 'none';
+        if (pfootEl)  pfootEl.style.display  = 'none';
+      }
+
+      iframe.src = targetUrl;
     }
 
-    // quick_actionは処理中スピナーを表示して即iframeを見せる
-    var isQuickAction = search.indexOf('page=quick_action') !== -1;
-    if (isQuickAction) {
-      // プログレスバーを隠してシンプルなスピナーに切り替え
-      var ptrackEl = document.querySelector('.ptrack');
-      var pfootEl  = document.querySelector('.load-foot');
-      var titleEl  = document.querySelector('.load-title');
-      var subEl    = document.querySelector('.load-sub');
-      if (titleEl) titleEl.textContent = '処理中...';
-      if (subEl)   subEl.textContent   = 'そのままお待ちください';
-      if (ptrackEl) ptrackEl.style.display = 'none';
-      if (pfootEl)  pfootEl.style.display  = 'none';
-    }
-
-    iframe.src = targetUrl;
-    } // end if !_handled
+    if (!_handled) { _loadIframe(null); }
   </script>
 </body>
 </html>
