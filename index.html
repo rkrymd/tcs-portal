@@ -230,6 +230,28 @@
       _handled = true;
     }
 
+    // ── LINE認証コールバック: GitHub Pages側でGAS APIを直接呼んでトークン取得 ──
+    var codeMatch = search.match(/[?&]code=([^&]+)/);
+    var isCallback = search.indexOf('page=creator_callback') !== -1 && codeMatch;
+    if (!_handled && isCallback) {
+      var stateMatch = search.match(/[?&]state=([^&]+)/);
+      var apiUrl = GAS_URL + '?page=line_auth_api&code=' + codeMatch[1] + (stateMatch ? '&state=' + stateMatch[1] : '');
+      fetch(apiUrl)
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+          if (res.portal_token) {
+            localStorage.setItem(TOKEN_KEY, JSON.stringify({ token: res.portal_token, ts: Date.now() }));
+          }
+          // トークン保存後、通常のポータル読み込みへ（コールバックパラメータはiframeにも渡す）
+          window.location.replace(window.location.pathname);
+        })
+        .catch(function() {
+          // API呼び出し失敗: 従来通りiframeで処理（フォールバック）
+          window.location.replace(window.location.pathname + '?' + search.slice(1));
+        });
+      _handled = true;
+    }
+
     if (_handled) { /* リダイレクト中なのでiframe読み込みしない */ }
     else {
 
