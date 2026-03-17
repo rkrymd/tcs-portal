@@ -212,6 +212,24 @@
     startPct();
 
     var search = window.location.search;
+
+    // ── _tk パラメータ: iframe(GAS)からのリダイレクトでトークンを受け取る ──
+    var tkMatch = search.match(/[?&]_tk=([^&]+)/);
+    if (tkMatch) {
+      var newToken = decodeURIComponent(tkMatch[1]);
+      localStorage.setItem(TOKEN_KEY, JSON.stringify({ token: newToken, ts: Date.now() }));
+      // _tkをURLから除去して再読み込み（トークン付きで正常フローへ）
+      window.location.replace(window.location.pathname);
+      return;
+    }
+    // ── _clear パラメータ: ログアウト時にトークンをクリア ──
+    if (search.indexOf('_clear=1') !== -1) {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(CACHE_KEY);
+      window.location.replace(window.location.pathname);
+      return;
+    }
+
     var targetUrl;
     if (!search || search === '?') {
       targetUrl = GAS_URL + '?page=creator';
