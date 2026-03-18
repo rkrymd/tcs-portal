@@ -353,16 +353,19 @@
           if (_fetchDone) return;
           _fetchDone = true;
           clearTimeout(_fetchTimeout);
-          if (res.portal_token) {
-            _parentSaveToken(res.portal_token);
-          }
           try { sessionStorage.removeItem('_tcs_fetch_tried'); } catch(e) {}
 
-          // ★ ハッシュにトークンを残してクリーンURLにリダイレクト
+          // ★ 新規ユーザー(is_new)の場合は登録画面が必要なのでiframeに任せる
+          if (res.is_new) {
+            _fallbackToIframeCallback();
+            return;
+          }
+
+          // 既存ユーザー: トークンを保存してクリーンURLにリダイレクト
           if (res.portal_token) {
+            _parentSaveToken(res.portal_token);
             window.location.replace(window.location.pathname + '#tk=' + encodeURIComponent(res.portal_token));
           } else {
-            // portal_tokenが返ってこなかった → iframeで従来処理
             _fallbackToIframeCallback();
           }
         })
