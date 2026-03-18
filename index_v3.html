@@ -318,72 +318,16 @@
     }
 
     // ── LINE認証コールバック ──
-    var codeMatch = search.match(/[?&]code=([^&]+)/);
-    var isCallback = search.indexOf('page=creator_callback') !== -1 && codeMatch;
-    var _alreadyTried = false;
-    try { _alreadyTried = sessionStorage.getItem('_tcs_fetch_tried') === '1'; } catch(e) {}
-
-    if (!_handled && isCallback && !_alreadyTried) {
-      try { sessionStorage.setItem('_tcs_fetch_tried', '1'); } catch(e) {}
-      var stateMatch = search.match(/[?&]state=([^&]+)/);
-      var apiUrl = GAS_URL + '?page=line_auth_api&code=' + codeMatch[1] + (stateMatch ? '&state=' + stateMatch[1] : '');
-      var _fetchDone = false;
-
-      // fetch失敗/タイムアウト時: iframeにコールバックURLをそのまま渡す
-      function _fallbackToIframeCallback() {
-        try { sessionStorage.removeItem('_tcs_fetch_tried'); } catch(e) {}
-        // ★ code/stateをGASに直接渡して従来のiframe内認証フローを使う
-        var fallbackUrl = GAS_URL + '?page=creator_callback&code=' + codeMatch[1]
-          + (stateMatch ? '&state=' + stateMatch[1] : '');
-        iframe.src = fallbackUrl;
-      }
-
-      var _fetchTimeout = setTimeout(function() {
-        if (_fetchDone) return;
-        _fetchDone = true;
-        _fallbackToIframeCallback();
-      }, 8000);
-
-      fetch(apiUrl, { redirect: 'follow' })
-        .then(function(r) {
-          if (!r.ok) throw new Error('HTTP ' + r.status);
-          return r.json();
-        })
-        .then(function(res) {
-          if (_fetchDone) return;
-          _fetchDone = true;
-          clearTimeout(_fetchTimeout);
-          try { sessionStorage.removeItem('_tcs_fetch_tried'); } catch(e) {}
-
-          // ★ 新規ユーザー(is_new)の場合は登録画面が必要なのでiframeに任せる
-          if (res.is_new) {
-            _fallbackToIframeCallback();
-            return;
-          }
-
-          // 既存ユーザー: トークンを保存してクリーンURLにリダイレクト
-          if (res.portal_token) {
-            _parentSaveToken(res.portal_token);
-            window.location.replace(window.location.pathname + '#tk=' + encodeURIComponent(res.portal_token));
-          } else {
-            _fallbackToIframeCallback();
-          }
-        })
-        .catch(function() {
-          if (_fetchDone) return;
-          _fetchDone = true;
-          clearTimeout(_fetchTimeout);
-          // ★ fetch失敗 → iframeにcode/stateを渡してGAS側で認証処理
-          _fallbackToIframeCallback();
-        });
-      _handled = true;
-    }
-    if (!isCallback) { try { sessionStorage.removeItem('_tcs_fetch_tried'); } catch(e) {} }
+    // fetch()はLINEブラウザで不安定なため廃止。常にiframeのGASに直接渡す。
+    var isCallback = search.indexOf('page=creator_callback') !== -1 && search.indexOf('code=') !== -1;
 
     // ── iframe読み込み関数 ──
     function _loadIframe(tokenOverride) {
       var targetUrl;
-      if (!search || search === '?' || search.indexOf('page=creator_callback') !== -1) {
+      if (isCallback) {
+        // ★ LINE認証コールバック: code/stateをGASにそのまま渡す
+        targetUrl = GAS_URL + search;
+      } else if (!search || search === '?') {
         targetUrl = GAS_URL + '?page=creator';
       } else if (search.indexOf('page=') !== -1) {
         targetUrl = GAS_URL + search;
