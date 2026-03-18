@@ -329,16 +329,26 @@
       var apiUrl = GAS_URL + '?page=line_auth_api&code=' + codeMatch[1] + (stateMatch ? '&state=' + stateMatch[1] : '');
       var _fetchDone = false;
 
+      // fetch失敗/タイムアウト時: iframeにコールバックURLをそのまま渡す
+      function _fallbackToIframeCallback() {
+        try { sessionStorage.removeItem('_tcs_fetch_tried'); } catch(e) {}
+        // ★ code/stateをGASに直接渡して従来のiframe内認証フローを使う
+        var fallbackUrl = GAS_URL + '?page=creator_callback&code=' + codeMatch[1]
+          + (stateMatch ? '&state=' + stateMatch[1] : '');
+        iframe.src = fallbackUrl;
+      }
+
       var _fetchTimeout = setTimeout(function() {
         if (_fetchDone) return;
         _fetchDone = true;
-        try { sessionStorage.removeItem('_tcs_fetch_tried'); } catch(e) {}
-        // タイムアウト: iframeで従来処理（code/stateをそのまま渡す）
-        _loadIframe(null);
+        _fallbackToIframeCallback();
       }, 8000);
 
-      fetch(apiUrl)
-        .then(function(r) { return r.json(); })
+      fetch(apiUrl, { redirect: 'follow' })
+        .then(function(r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        })
         .then(function(res) {
           if (_fetchDone) return;
           _fetchDone = true;
@@ -349,19 +359,19 @@
           try { sessionStorage.removeItem('_tcs_fetch_tried'); } catch(e) {}
 
           // ★ ハッシュにトークンを残してクリーンURLにリダイレクト
-          // → localStorage/Cookie が全滅でもハッシュで復元可能
           if (res.portal_token) {
             window.location.replace(window.location.pathname + '#tk=' + encodeURIComponent(res.portal_token));
           } else {
-            _loadIframe(null);
+            // portal_tokenが返ってこなかった → iframeで従来処理
+            _fallbackToIframeCallback();
           }
         })
         .catch(function() {
           if (_fetchDone) return;
           _fetchDone = true;
           clearTimeout(_fetchTimeout);
-          try { sessionStorage.removeItem('_tcs_fetch_tried'); } catch(e) {}
-          _loadIframe(null);
+          // ★ fetch失敗 → iframeにcode/stateを渡してGAS側で認証処理
+          _fallbackToIframeCallback();
         });
       _handled = true;
     }
