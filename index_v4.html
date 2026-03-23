@@ -118,7 +118,7 @@
     var GAS_URL = 'https://script.google.com/macros/s/AKfycbynGD114UttjrVOfS_JXF5iAlSY2OyKo8rg1jMvC-45UNzLAgmPfOIIDBppWJTJsw7Q/exec';
 
     // ★ LIFF ID（LINE Developersコンソールで発行後にここに設定）
-    var LIFF_ID = '__LIFF_ID_HERE__';
+    var LIFF_ID = '2009336127-3NfRVqia';
 
     var iframe   = document.getElementById('portal');
     var loadScr  = document.getElementById('loadScreen');
@@ -351,7 +351,7 @@
     // ══════════════════════════════════════════════════════════════
     function _liffAuth() {
       // LIFF IDが未設定の場合はフォールバック
-      if (!LIFF_ID || LIFF_ID === '__LIFF_ID_HERE__') {
+      if (!LIFF_ID || LIFF_ID === '2009336127-3NfRVqia') {
         console.log('[LIFF] LIFF_ID未設定。従来フローで起動');
         _fallbackBoot();
         return;
