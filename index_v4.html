@@ -351,7 +351,7 @@
     // ══════════════════════════════════════════════════════════════
     function _liffAuth() {
       // LIFF IDが未設定の場合はフォールバック
-      if (!LIFF_ID || LIFF_ID === '2009336127-3NfRVqia') {
+      if (!LIFF_ID) {
         console.log('[LIFF] LIFF_ID未設定。従来フローで起動');
         _fallbackBoot();
         return;
