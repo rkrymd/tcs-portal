@@ -350,6 +350,15 @@
     // ★ LIFF認証フロー
     // ══════════════════════════════════════════════════════════════
     function _liffAuth() {
+      // ★ 保存済みトークンがあればLIFF認証スキップ（SDK副作用回避+高速化）
+      var existingToken = _parentGetToken();
+      if (existingToken) {
+        console.log('[LIFF] 保存済みトークンあり。LIFF認証スキップ');
+        startPct();
+        _loadIframe(existingToken);
+        return;
+      }
+
       // LIFF IDが未設定の場合はフォールバック
       if (!LIFF_ID) {
         console.log('[LIFF] LIFF_ID未設定。従来フローで起動');
