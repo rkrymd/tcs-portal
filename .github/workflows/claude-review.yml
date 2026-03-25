@@ -33,6 +33,37 @@ jobs:
 
             問題があればインラインコメントで具体的に指摘。問題なければ簡潔にLGTM。
 
+      - name: レビュー結果取得
+        if: always()
+        id: get-review
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          COMMENTS=$(gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments --jq '[.[] | select(.body | contains("Claude finished")) | .body] | last // "レビュー結果を取得できませんでした"')
+
+          # 要約を抽出（最初の「まとめ」テーブルまたは最初の数行）
+          SUMMARY=$(echo "$COMMENTS" | grep -A 20 "まとめ\|LGTM\|マージ" | head -10)
+          if [ -z "$SUMMARY" ]; then
+            SUMMARY=$(echo "$COMMENTS" | grep -E "🔴|🟡|🟢|✅|LGTM|バグ|セキュリティ|問題" | head -8)
+          fi
+          if [ -z "$SUMMARY" ]; then
+            SUMMARY="レビュー完了（詳細はGitHubで確認）"
+          fi
+
+          # 改行をエスケープしてGitHub出力に保存
+          echo "summary<<EOF" >> $GITHUB_OUTPUT
+          echo "$SUMMARY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          # 問題件数を検出
+          if echo "$COMMENTS" | grep -q "🔴"; then
+            echo "status=🔴 要修正" >> $GITHUB_OUTPUT
+          elif echo "$COMMENTS" | grep -q "🟡"; then
+            echo "status=🟡 軽微な指摘あり" >> $GITHUB_OUTPUT
+          else
+            echo "status=✅ LGTM" >> $GITHUB_OUTPUT
+          fi
+
       - name: Slack通知
         if: always()
         env:
@@ -42,42 +73,22 @@ jobs:
           PR_URL="${{ github.event.pull_request.html_url }}"
           PR_NUM="${{ github.event.pull_request.number }}"
           REPO="${{ github.repository }}"
-          AUTHOR="${{ github.event.pull_request.user.login }}"
-          STATUS="${{ job.status }}"
+          STATUS="${{ steps.get-review.outputs.status }}"
+          SUMMARY="${{ steps.get-review.outputs.summary }}"
 
-          if [ "$STATUS" = "success" ]; then
-            EMOJI="✅"
+          # ステータスに応じた色
+          if echo "$STATUS" | grep -q "🔴"; then
+            COLOR="#E01E5A"
+          elif echo "$STATUS" | grep -q "🟡"; then
+            COLOR="#ECB22E"
           else
-            EMOJI="🔴"
+            COLOR="#2EB67D"
           fi
 
-          PAYLOAD=$(cat <<'PAYLOAD_EOF'
-          {
-            "blocks": [
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "EMOJI_PH *<PR_URL_PH|PR #PR_NUM_PH: PR_TITLE_PH>*\nRepo: REPO_PH | Author: AUTHOR_PH\nClaudeレビュー完了。GitHubで確認してください。"
-                }
-              },
-              {
-                "type": "actions",
-                "elements": [
-                  {
-                    "type": "button",
-                    "text": { "type": "plain_text", "text": "PRを確認" },
-                    "url": "PR_URL_PH",
-                    "style": "primary"
-                  }
-                ]
-              }
-            ]
-          }
-          PAYLOAD_EOF
-          )
+          # Slack改行に変換
+          SUMMARY_ESCAPED=$(echo "$SUMMARY" | sed 's/"/\\"/g' | tr '\n' ' ' | sed 's/  */ /g' | head -c 500)
 
-          PAYLOAD=$(echo "$PAYLOAD" | sed "s|EMOJI_PH|$EMOJI|g" | sed "s|PR_URL_PH|$PR_URL|g" | sed "s|PR_NUM_PH|$PR_NUM|g" | sed "s|PR_TITLE_PH|$PR_TITLE|g" | sed "s|REPO_PH|$REPO|g" | sed "s|AUTHOR_PH|$AUTHOR|g")
+          PAYLOAD="{\"attachments\":[{\"color\":\"${COLOR}\",\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"*${STATUS}*  <${PR_URL}|PR #${PR_NUM}: ${PR_TITLE}>\n${REPO}\n\n${SUMMARY_ESCAPED}\"}},{\"type\":\"actions\",\"elements\":[{\"type\":\"button\",\"text\":{\"type\":\"plain_text\",\"text\":\"PRを確認\"},\"url\":\"${PR_URL}\",\"style\":\"primary\"}]}]}]}"
 
           if [ -n "$SLACK_WEBHOOK_URL" ]; then
             curl -s -X POST "$SLACK_WEBHOOK_URL" \
