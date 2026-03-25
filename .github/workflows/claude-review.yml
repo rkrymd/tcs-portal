@@ -36,25 +36,29 @@ jobs:
       - name: Slack通知
         if: always()
         env:
-          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
-          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL_PR_REVIEW }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           PR_TITLE="${{ github.event.pull_request.title }}"
           PR_URL="${{ github.event.pull_request.html_url }}"
           PR_NUM="${{ github.event.pull_request.number }}"
           REPO="${{ github.repository }}"
           AUTHOR="${{ github.event.pull_request.user.login }}"
+          STATUS="${{ job.status }}"
 
-          BLOCKS=$(cat <<BLOCKS_EOF
+          if [ "$STATUS" = "success" ]; then
+            EMOJI="✅"
+          else
+            EMOJI="🔴"
+          fi
+
+          PAYLOAD=$(cat <<'PAYLOAD_EOF'
           {
-            "channel": "${SLACK_CHANNEL}",
-            "text": "PR #${PR_NUM} レビュー完了: ${PR_TITLE}",
             "blocks": [
               {
                 "type": "section",
                 "text": {
                   "type": "mrkdwn",
-                  "text": "*<${PR_URL}|PR #${PR_NUM}: ${PR_TITLE}>*\nRepo: ${REPO} | Author: ${AUTHOR}"
+                  "text": "EMOJI_PH *<PR_URL_PH|PR #PR_NUM_PH: PR_TITLE_PH>*\nRepo: REPO_PH | Author: AUTHOR_PH\nClaudeレビュー完了。GitHubで確認してください。"
                 }
               },
               {
@@ -63,18 +67,20 @@ jobs:
                   {
                     "type": "button",
                     "text": { "type": "plain_text", "text": "PRを確認" },
-                    "url": "${PR_URL}"
+                    "url": "PR_URL_PH",
+                    "style": "primary"
                   }
                 ]
               }
             ]
           }
-          BLOCKS_EOF
+          PAYLOAD_EOF
           )
 
-          if [ -n "$SLACK_TOKEN" ] && [ -n "$SLACK_CHANNEL" ]; then
-            curl -s -X POST "https://slack.com/api/chat.postMessage" \
-              -H "Authorization: Bearer $SLACK_TOKEN" \
-              -H "Content-Type: application/json; charset=utf-8" \
-              -d "$BLOCKS"
+          PAYLOAD=$(echo "$PAYLOAD" | sed "s|EMOJI_PH|$EMOJI|g" | sed "s|PR_URL_PH|$PR_URL|g" | sed "s|PR_NUM_PH|$PR_NUM|g" | sed "s|PR_TITLE_PH|$PR_TITLE|g" | sed "s|REPO_PH|$REPO|g" | sed "s|AUTHOR_PH|$AUTHOR|g")
+
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -s -X POST "$SLACK_WEBHOOK_URL" \
+              -H "Content-Type: application/json" \
+              -d "$PAYLOAD"
           fi
