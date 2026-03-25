@@ -2,27 +2,79 @@ name: Claude Code Review
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
-  issue_comment:
-    types: [created]
+    types: [opened, synchronize, ready_for_review, reopened]
 
 jobs:
-  claude-review:
-    if: |
-      (github.event_name == 'pull_request') ||
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude'))
+  review:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
-      issues: write
       id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-      - name: Run Claude Code Review
+      - name: PR Review
+        id: claude-review
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          trigger_phrase: "@claude"
+          track_progress: true
+          prompt: |
+            PR #${{ github.event.pull_request.number }} のコードレビューを行ってください。
+
+            1. バグ・ロジックエラー
+            2. セキュリティ（ハードコードされた認証情報、SQLインジェクション等）
+            3. パフォーマンス問題
+            4. GAS特有の注意点（列番号ハードコード、トリガー制限等）
+
+            問題があればインラインコメントで具体的に指摘。問題なければ簡潔にLGTM。
+
+      - name: Slack通知
+        if: always()
+        env:
+          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL_PR_REVIEW }}
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_URL="${{ github.event.pull_request.html_url }}"
+          PR_NUM="${{ github.event.pull_request.number }}"
+          REPO="${{ github.repository }}"
+          AUTHOR="${{ github.event.pull_request.user.login }}"
+
+          BLOCKS=$(cat <<BLOCKS_EOF
+          {
+            "channel": "${SLACK_CHANNEL}",
+            "text": "PR #${PR_NUM} レビュー完了: ${PR_TITLE}",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*<${PR_URL}|PR #${PR_NUM}: ${PR_TITLE}>*\nRepo: ${REPO} | Author: ${AUTHOR}"
+                }
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": { "type": "plain_text", "text": "PRを確認" },
+                    "url": "${PR_URL}"
+                  }
+                ]
+              }
+            ]
+          }
+          BLOCKS_EOF
+          )
+
+          if [ -n "$SLACK_TOKEN" ] && [ -n "$SLACK_CHANNEL" ]; then
+            curl -s -X POST "https://slack.com/api/chat.postMessage" \
+              -H "Authorization: Bearer $SLACK_TOKEN" \
+              -H "Content-Type: application/json; charset=utf-8" \
+              -d "$BLOCKS"
+          fi
